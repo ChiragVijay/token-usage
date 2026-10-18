@@ -1,5 +1,5 @@
 use anyhow::{Result, bail};
-use token_dock::{
+use token_usage::{
     analytics::{self, Period},
     config::Config,
     model::Snapshot,
@@ -60,7 +60,7 @@ fn run() -> Result<()> {
     } else {
         cached
     };
-    token_dock::pricing::prepare(config.online);
+    token_usage::pricing::prepare(config.online);
     let now = chrono::Utc::now();
     let analysis = analytics::analyze(&snapshot, &config, period, None, now);
     if args.contains(&"--json".into()) {
@@ -74,13 +74,13 @@ fn run() -> Result<()> {
         println!(
             "{}",
             serde_json::to_string_pretty(
-                &serde_json::json!({"schema":"token-dock.v2","days":period.days(),"period":period.key(),"starts_at":period.start(now),"ends_at":now,"reported_usage_cost_usd":analysis.totals.reported_spend(),"usage_cost_usd":analysis.totals.spend(),"cost_reporting_events":analysis.totals.reported_rows,"tokens":analysis.totals.tokens,"sessions":analysis.totals.sessions,"accounts":accounts,"models":models,"refreshed_at":snapshot.refreshed_at,"notices":snapshot.notices})
+                &serde_json::json!({"schema":"token-usage.v2","days":period.days(),"period":period.key(),"starts_at":period.start(now),"ends_at":now,"reported_usage_cost_usd":analysis.totals.reported_spend(),"usage_cost_usd":analysis.totals.spend(),"cost_reporting_events":analysis.totals.reported_rows,"tokens":analysis.totals.tokens,"sessions":analysis.totals.sessions,"accounts":accounts,"models":models,"refreshed_at":snapshot.refreshed_at,"notices":snapshot.notices})
             )?
         );
     } else {
         let sep = analytics::separator();
         println!(
-            "TokenDock{sep}{}\n{}",
+            "Token Usage{sep}{}\n{}",
             period.label(),
             [
                 format!(

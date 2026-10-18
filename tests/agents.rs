@@ -3,7 +3,7 @@ use rusqlite::Connection;
 use serde_json::{Value, json};
 use std::fs;
 use tempfile::TempDir;
-use token_dock::{
+use token_usage::{
     config::Config,
     model::{Provider, Snapshot},
     providers::{antigravity, kiro, opencode},

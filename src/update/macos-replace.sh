@@ -15,7 +15,7 @@ work="$(mktemp -d "${target}.update-XXXXXX")" || {
 replacement="$work/replacement.app"
 backup="$work/previous.app"
 if ! /usr/bin/ditto "$staged" "$replacement" ||
-   ! test -x "$replacement/Contents/MacOS/token-dock"; then
+   ! test -x "$replacement/Contents/MacOS/token-usage"; then
   rm -rf "$work"
   /usr/bin/open "$target"
   exit 1

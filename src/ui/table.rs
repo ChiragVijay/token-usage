@@ -1,5 +1,5 @@
 use std::cmp::Ordering;
-use token_dock::{
+use token_usage::{
     analytics::{self, ModelRow, ProjectRow, Totals},
     model::UsageRecord,
 };
@@ -222,7 +222,7 @@ pub fn matches_query(query: &str, fields: &[&str]) -> bool {
 mod tests {
     use super::*;
     use chrono::{TimeZone, Utc};
-    use token_dock::model::{Provider, Tokens};
+    use token_usage::model::{Provider, Tokens};
     fn row(model: &str, tokens: u64, cost: Option<f64>) -> ModelRow {
         ModelRow {
             model: model.into(),

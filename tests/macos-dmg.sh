@@ -12,7 +12,7 @@ fi
 app="$1"
 output="$2"
 test -d "$app"
-test -x "$app/Contents/MacOS/token-dock"
+test -x "$app/Contents/MacOS/token-usage"
 
 work="$(mktemp -d)"
 mountpoint=""
@@ -55,15 +55,15 @@ detach_mount() {
 
 stage="$work/stage"
 mkdir -p "$stage"
-/usr/bin/ditto "$app" "$stage/TokenDock.app"
-chmod +x "$stage/TokenDock.app/Contents/MacOS/token-dock"
+/usr/bin/ditto "$app" "$stage/Token Usage.app"
+chmod +x "$stage/Token Usage.app/Contents/MacOS/token-usage"
 ln -s /Applications "$stage/Applications"
 
 # Replace the linker ad-hoc signature, which requires a resource seal the
 # bundle does not have, with a signature that covers the bundle.
-/usr/bin/codesign --force --sign - "$stage/TokenDock.app"
-/usr/bin/codesign --verify --deep --strict "$stage/TokenDock.app"
-/usr/bin/codesign -dv --verbose=4 "$stage/TokenDock.app" >"$work/signature.txt" 2>&1
+/usr/bin/codesign --force --sign - "$stage/Token Usage.app"
+/usr/bin/codesign --verify --deep --strict "$stage/Token Usage.app"
+/usr/bin/codesign -dv --verbose=4 "$stage/Token Usage.app" >"$work/signature.txt" 2>&1
 cat "$work/signature.txt"
 grep -q 'Signature=adhoc' "$work/signature.txt"
 grep -q 'Sealed Resources version=' "$work/signature.txt"
@@ -71,12 +71,12 @@ grep -q 'Sealed Resources version=' "$work/signature.txt"
 # Create a read-write image, detach it, then convert. A one-step UDZO image
 # is compressed before that volume is closed.
 rw="$work/read-write.dmg"
-hdiutil_retry create -volname "TokenDock" -srcfolder "$stage" -ov -fs HFS+ -format UDRW "$rw"
+hdiutil_retry create -volname "Token Usage" -srcfolder "$stage" -ov -fs HFS+ -format UDRW "$rw"
 # create can leave the new image attached. Detach that mount before converting.
 /usr/bin/hdiutil detach "$rw" >/dev/null 2>&1 || true
 mountpoint="$(mktemp -d)"
 hdiutil_retry attach "$rw" -nobrowse -readonly -mountpoint "$mountpoint"
-test -x "$mountpoint/TokenDock.app/Contents/MacOS/token-dock"
+test -x "$mountpoint/Token Usage.app/Contents/MacOS/token-usage"
 test -L "$mountpoint/Applications"
 point="$mountpoint"
 detach_mount "$point"
@@ -93,10 +93,10 @@ rm -f "$rw"
 hdiutil_retry verify "$output"
 mountpoint="$(mktemp -d)"
 hdiutil_retry attach "$output" -nobrowse -readonly -mountpoint "$mountpoint"
-test -d "$mountpoint/TokenDock.app"
-test -x "$mountpoint/TokenDock.app/Contents/MacOS/token-dock"
+test -d "$mountpoint/Token Usage.app"
+test -x "$mountpoint/Token Usage.app/Contents/MacOS/token-usage"
 test -L "$mountpoint/Applications"
-/usr/bin/codesign --verify --deep --strict "$mountpoint/TokenDock.app"
+/usr/bin/codesign --verify --deep --strict "$mountpoint/Token Usage.app"
 point="$mountpoint"
 detach_mount "$point"
 rmdir "$point" 2>/dev/null || true

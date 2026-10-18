@@ -8,7 +8,7 @@
 //! older one, so results for outdated keystrokes are discarded.
 use super::*;
 use std::{path::PathBuf, sync::Arc};
-use token_dock::analytics::{Analysis, Insights, ModelRow, ProjectRow};
+use token_usage::analytics::{Analysis, Insights, ModelRow, ProjectRow};
 
 /// The inputs every history-derived value shares.
 #[derive(Clone, PartialEq)]
@@ -49,7 +49,7 @@ pub struct ActivityResult {
     pub total: usize,
 }
 impl ActivityResult {
-    pub fn records(&self) -> impl Iterator<Item = &token_dock::model::UsageRecord> {
+    pub fn records(&self) -> impl Iterator<Item = &token_usage::model::UsageRecord> {
         self.indices
             .iter()
             .map(|&index| &self.snapshot.records[index])
@@ -283,7 +283,7 @@ impl Dashboard {
                         Provider::ALL
                             .into_iter()
                             .map(|provider| {
-                                token_dock::providers::homes(provider, &config)
+                                token_usage::providers::homes(provider, &config)
                                     .into_iter()
                                     .filter(|path| path.exists())
                                     .collect()

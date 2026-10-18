@@ -26,7 +26,7 @@ use std::{
 };
 use table::{Column, CostFilter, Sort, Table};
 use theme::*;
-use token_dock::{
+use token_usage::{
     analytics::{self, Period},
     config::Config,
     model::{Provider, Snapshot},
@@ -117,9 +117,9 @@ enum RefreshMsg {
     Message(String),
     UpdateChecked {
         manual: bool,
-        result: Result<token_dock::update::Check, String>,
+        result: Result<token_usage::update::Check, String>,
     },
-    UpdateInstalled(Result<token_dock::update::Install, String>),
+    UpdateInstalled(Result<token_usage::update::Install, String>),
 }
 
 pub struct Dashboard {
@@ -167,7 +167,7 @@ pub struct Dashboard {
     /// `None` shows as many rows as fit in the window.
     activity_rows: Option<usize>,
     detail: Option<String>,
-    update_offer: Option<token_dock::update::Offer>,
+    update_offer: Option<token_usage::update::Offer>,
     /// The launch prompt is shown at most once. Delay does not clear this.
     update_asked: bool,
     update_auto: bool,
@@ -205,7 +205,7 @@ impl Dashboard {
                 }
             });
         }
-        token_dock::pricing::start(config.online);
+        token_usage::pricing::start(config.online);
         sync_components(config.dark, window, cx);
         let focus = cx.focus_handle();
         window.focus(&focus);
@@ -400,7 +400,7 @@ impl Dashboard {
         }
         let sender = self.sender.clone();
         std::thread::spawn(move || {
-            let result = token_dock::update::check();
+            let result = token_usage::update::check();
             let _ = sender.send(RefreshMsg::UpdateChecked { manual, result });
         });
         cx.notify();
@@ -415,7 +415,7 @@ impl Dashboard {
         self.update_busy = true;
         let sender = self.sender.clone();
         std::thread::spawn(move || {
-            let result = token_dock::update::install(&offer);
+            let result = token_usage::update::install(&offer);
             let _ = sender.send(RefreshMsg::UpdateInstalled(result));
         });
         cx.notify();
@@ -475,11 +475,11 @@ impl Dashboard {
                 RefreshMsg::UpdateChecked { manual, result } => {
                     self.update_checking = false;
                     match result {
-                        Ok(token_dock::update::Check::Available(offer)) => {
+                        Ok(token_usage::update::Check::Available(offer)) => {
                             let show = manual
-                                || token_dock::update::prompt_on_launch(
+                                || token_usage::update::prompt_on_launch(
                                     &offer.version,
-                                    token_dock::update::current_version(),
+                                    token_usage::update::current_version(),
                                     self.update_asked,
                                 );
                             if show {
@@ -487,14 +487,14 @@ impl Dashboard {
                                 self.update_offer = Some(offer);
                             }
                         }
-                        Ok(token_dock::update::Check::Current) => {
+                        Ok(token_usage::update::Check::Current) => {
                             self.update_asked = true;
                             self.update_offer = None;
                             if manual {
-                                self.message("TokenDock is up to date.", cx);
+                                self.message("Token Usage is up to date.", cx);
                             }
                         }
-                        Ok(token_dock::update::Check::MissingDownload { version }) => {
+                        Ok(token_usage::update::Check::MissingDownload { version }) => {
                             if manual {
                                 self.message(
                                     format!("Version {version} has no download for this system."),
@@ -502,7 +502,7 @@ impl Dashboard {
                                 );
                             }
                         }
-                        Ok(token_dock::update::Check::Unsupported) => {
+                        Ok(token_usage::update::Check::Unsupported) => {
                             if manual {
                                 self.message(
                                     "Updates are available for Windows x64 and Apple Silicon Macs.",
@@ -522,11 +522,11 @@ impl Dashboard {
                 RefreshMsg::UpdateInstalled(result) => {
                     self.update_busy = false;
                     match result {
-                        Ok(token_dock::update::Install::Restarting) => {
+                        Ok(token_usage::update::Install::Restarting) => {
                             self.message("Restarting to finish the update.", cx);
                             restart_for_update = true;
                         }
-                        Ok(token_dock::update::Install::Opened(text)) => {
+                        Ok(token_usage::update::Install::Opened(text)) => {
                             self.update_offer = None;
                             self.message(text, cx);
                         }
@@ -547,7 +547,7 @@ impl Dashboard {
             self.pending_refresh = false;
             self.refresh(cx);
         }
-        if token_dock::pricing::take_updated() {
+        if token_usage::pricing::take_updated() {
             self.invalidate();
             cx.notify();
         }
@@ -621,7 +621,7 @@ impl Dashboard {
             }
         }
     }
-    fn visible_accounts(&self) -> Vec<&token_dock::model::ProviderStatus> {
+    fn visible_accounts(&self) -> Vec<&token_usage::model::ProviderStatus> {
         self.data()
             .providers
             .iter()
@@ -669,13 +669,13 @@ impl Dashboard {
                 caption
             };
         }
-        match token_dock::pricing::state() {
-            token_dock::pricing::RateState::Loading => "Loading model rates".into(),
-            token_dock::pricing::RateState::Unavailable => "Model rates unavailable".into(),
-            token_dock::pricing::RateState::Ready => "No public rate".into(),
+        match token_usage::pricing::state() {
+            token_usage::pricing::RateState::Loading => "Loading model rates".into(),
+            token_usage::pricing::RateState::Unavailable => "Model rates unavailable".into(),
+            token_usage::pricing::RateState::Ready => "No public rate".into(),
         }
     }
-    fn event_cost(&self, record: &token_dock::model::UsageRecord) -> (String, String) {
+    fn event_cost(&self, record: &token_usage::model::UsageRecord) -> (String, String) {
         match analytics::record_cost(record) {
             Some((cost, false)) => (self.money(cost), "Reported".into()),
             Some((cost, true)) => (
@@ -692,7 +692,7 @@ impl Dashboard {
                 return;
             };
             let mut tooltip = format!(
-                "TokenDock\n{} tokens today",
+                "Token Usage\n{} tokens today",
                 self.number(analysis.totals.tokens.total())
             );
             for status in self.visible_accounts() {
@@ -717,7 +717,7 @@ impl Dashboard {
             #[cfg(target_os = "macos")]
             {
                 let title = if self.config.privacy {
-                    "TokenDock".into()
+                    "Token Usage".into()
                 } else {
                     self.visible_accounts()
                         .iter()
@@ -739,7 +739,7 @@ impl Dashboard {
                         .join(analytics::separator())
                 };
                 tray.icon.set_title(Some(if title.is_empty() {
-                    "TokenDock".into()
+                    "Token Usage".into()
                 } else {
                     title
                 }));

@@ -56,13 +56,13 @@ fn custom_homes<'de, D: serde::Deserializer<'de>>(
     Ok(result)
 }
 pub fn data_dir() -> Result<PathBuf> {
-    if let Some(path) = std::env::var_os("TOKEN_DOCK_DATA_DIR").filter(|value| !value.is_empty()) {
+    if let Some(path) = std::env::var_os("TOKEN_USAGE_DATA_DIR").filter(|value| !value.is_empty()) {
         return Ok(PathBuf::from(path));
     }
     dirs::data_local_dir()
         .or_else(|| dirs::home_dir().map(|home| home.join(".local/share")))
         .context("No per-user application data directory is available")
-        .map(|base| base.join("token-dock"))
+        .map(|base| base.join("token-usage"))
 }
 pub(crate) fn private_data_dir() -> Result<PathBuf> {
     let path = data_dir()?;

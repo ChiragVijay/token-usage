@@ -1,6 +1,6 @@
 use super::*;
 use charts::{Bar, Y_AXIS_WIDTH};
-use token_dock::analytics::{ProjectRow, Totals};
+use token_usage::analytics::{ProjectRow, Totals};
 use views::{COLUMN_GAP, ROW_HEIGHT, TABLE_HEADER, TABLE_PAD};
 
 impl Dashboard {
@@ -24,7 +24,7 @@ impl Dashboard {
 
         let colors = token_colors(dark);
         const KINDS: [&str; 4] = ["Input", "Output", "Cache read", "Cache write"];
-        let kinds = |tokens: &token_dock::model::Tokens| {
+        let kinds = |tokens: &token_usage::model::Tokens| {
             [
                 tokens.input,
                 tokens.output,

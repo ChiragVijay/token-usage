@@ -16,7 +16,7 @@ fn run() -> Result<()> {
                 "build",
                 "--release",
                 "--bin",
-                "token-dock",
+                "token-usage",
                 "--bin",
                 "usage",
             ])
@@ -31,7 +31,7 @@ fn run() -> Result<()> {
     fs::create_dir_all(&output)?;
     match std::env::consts::OS {
         "windows" => {
-            let portable = output.join("TokenDock-windows");
+            let portable = output.join("Token Usage-windows");
             fs::create_dir_all(&portable)?;
             fs::copy(
                 root.join("docs/licenses/OpenUsage-MIT.txt"),
@@ -42,8 +42,8 @@ fn run() -> Result<()> {
                 portable.join("OpenUsage-Windows-MIT.txt"),
             )?;
             fs::copy(
-                root.join("target/release/token-dock.exe"),
-                portable.join("TokenDock.exe"),
+                root.join("target/release/token-usage.exe"),
+                portable.join("Token Usage.exe"),
             )?;
             fs::copy(
                 root.join("target/release/usage.exe"),
@@ -52,7 +52,7 @@ fn run() -> Result<()> {
             println!("Portable app: {}", portable.display());
         }
         "macos" => {
-            let bundle = output.join("TokenDock.app");
+            let bundle = output.join("Token Usage.app");
             let contents = bundle.join("Contents");
             let binaries = contents.join("MacOS");
             let resources = contents.join("Resources");
@@ -66,8 +66,8 @@ fn run() -> Result<()> {
                 root.join("docs/licenses/OpenUsage-Windows-MIT.txt"),
                 resources.join("OpenUsage-Windows-MIT.txt"),
             )?;
-            let executable = binaries.join("token-dock");
-            fs::copy(root.join("target/release/token-dock"), &executable)?;
+            let executable = binaries.join("token-usage");
+            fs::copy(root.join("target/release/token-usage"), &executable)?;
             fs::copy(
                 root.join("assets/AppIcon.icns"),
                 resources.join("AppIcon.icns"),
@@ -79,10 +79,10 @@ fn run() -> Result<()> {
 <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
 <plist version="1.0">
 <dict>
-<key>CFBundleName</key><string>TokenDock</string>
-<key>CFBundleDisplayName</key><string>TokenDock</string>
-<key>CFBundleIdentifier</key><string>dev.chirag.token-dock</string>
-<key>CFBundleExecutable</key><string>token-dock</string>
+<key>CFBundleName</key><string>Token Usage</string>
+<key>CFBundleDisplayName</key><string>Token Usage</string>
+<key>CFBundleIdentifier</key><string>dev.chirag.token-usage</string>
+<key>CFBundleExecutable</key><string>token-usage</string>
 <key>CFBundleIconFile</key><string>AppIcon</string>
 <key>CFBundlePackageType</key><string>APPL</string>
 <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>

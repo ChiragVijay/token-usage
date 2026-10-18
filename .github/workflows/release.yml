@@ -81,14 +81,14 @@ jobs:
           lock_path = pathlib.Path("Cargo.lock")
           lock = lock_path.read_text()
           updated, count = re.subn(
-              r'(name = "token-dock"\nversion = ")\d+\.\d+\.\d+(")',
+              r'(name = "token-usage"\nversion = ")\d+\.\d+\.\d+(")',
               rf"\g<1>{new}\2",
               lock,
               count=1,
           )
           if count != 1:
               sys.exit(
-                  f"Expected to update the token-dock version in Cargo.lock once, updated {count}"
+                  f"Expected to update the token-usage version in Cargo.lock once, updated {count}"
               )
           lock_path.write_text(updated)
           print(new)
@@ -116,7 +116,7 @@ jobs:
             --target "$SHA" \
             --title "v${VERSION}" \
             --draft \
-            --notes "TokenDock ${VERSION}. Release downloads are being prepared."
+            --notes "Token Usage ${VERSION}. Release downloads are being prepared."
 
   windows:
     name: Windows
@@ -144,17 +144,17 @@ jobs:
         env:
           VERSION: ${{ needs.bump.outputs.version }}
         run: |
-          Copy-Item "dist\TokenDock-windows\TokenDock.exe" "token-dock-$env:VERSION.exe"
+          Copy-Item "dist\Token Usage-windows\Token Usage.exe" "token-usage-$env:VERSION.exe"
           # Already-installed clients select this exact name.
-          Copy-Item "token-dock-$env:VERSION.exe" "token-dock.exe"
-          Copy-Item "token-dock-$env:VERSION.exe" "open-usage.exe"
+          Copy-Item "token-usage-$env:VERSION.exe" "token-usage.exe"
+          Copy-Item "token-usage-$env:VERSION.exe" "open-usage.exe"
       - name: Upload release asset
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: v${{ needs.bump.outputs.version }}
           VERSION: ${{ needs.bump.outputs.version }}
-        run: gh release upload "$env:TAG" "token-dock-$env:VERSION.exe" token-dock.exe open-usage.exe --clobber
+        run: gh release upload "$env:TAG" "token-usage-$env:VERSION.exe" token-usage.exe open-usage.exe --clobber
 
   macos:
     name: macOS (Apple Silicon)
@@ -191,18 +191,18 @@ jobs:
           VERSION: ${{ needs.bump.outputs.version }}
         run: |
           set -euo pipefail
-          test -d "dist/TokenDock.app"
-          test "$(lipo -archs 'dist/TokenDock.app/Contents/MacOS/token-dock')" = "arm64"
-          sh tests/macos-dmg.sh "dist/TokenDock.app" "token-dock-${VERSION}.dmg"
+          test -d "dist/Token Usage.app"
+          test "$(lipo -archs 'dist/Token Usage.app/Contents/MacOS/token-usage')" = "arm64"
+          sh tests/macos-dmg.sh "dist/Token Usage.app" "token-usage-${VERSION}.dmg"
           # Already-installed clients select this exact name.
-          cp "token-dock-${VERSION}.dmg" token-dock.dmg
-          cp "token-dock-${VERSION}.dmg" open-usage.dmg
+          cp "token-usage-${VERSION}.dmg" token-usage.dmg
+          cp "token-usage-${VERSION}.dmg" open-usage.dmg
       - name: Upload release asset
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: v${{ needs.bump.outputs.version }}
           VERSION: ${{ needs.bump.outputs.version }}
-        run: gh release upload "$TAG" "token-dock-${VERSION}.dmg" token-dock.dmg open-usage.dmg --clobber
+        run: gh release upload "$TAG" "token-usage-${VERSION}.dmg" token-usage.dmg open-usage.dmg --clobber
 
   publish:
     name: Publish
@@ -219,15 +219,15 @@ jobs:
           assets="$(gh release view "$TAG" --json assets --jq '.assets[].name')"
           printf '%s\n' "$assets"
           printf '%s\n' "$assets" > release-assets.txt
-          grep -Fx "token-dock-${VERSION}.exe" release-assets.txt
-          grep -Fx "token-dock-${VERSION}.dmg" release-assets.txt
-          grep -qx "token-dock.exe" release-assets.txt
-          grep -qx "token-dock.dmg" release-assets.txt
+          grep -Fx "token-usage-${VERSION}.exe" release-assets.txt
+          grep -Fx "token-usage-${VERSION}.dmg" release-assets.txt
+          grep -qx "token-usage.exe" release-assets.txt
+          grep -qx "token-usage.dmg" release-assets.txt
           grep -Fx "open-usage.exe" release-assets.txt
           grep -Fx "open-usage.dmg" release-assets.txt
           gh release edit "$TAG" --draft=false \
-            --notes "TokenDock ${VERSION}. Downloads: token-dock-${VERSION}.exe and token-dock-${VERSION}.dmg.
+            --notes "Token Usage ${VERSION}. Downloads: token-usage-${VERSION}.exe and token-usage-${VERSION}.dmg.
 
-          macOS: This free build is ad-hoc signed and is not notarized by Apple. If macOS blocks the DMG, attempt to open it, then go to System Settings > Privacy & Security > Open Anyway and confirm. After mounting, drag TokenDock.app into Applications. If the app is also blocked, repeat Open Anyway for the installed app. Only approve downloads you trust from this repository.
+          macOS: This free build is ad-hoc signed and is not notarized by Apple. If macOS blocks the DMG, attempt to open it, then go to System Settings > Privacy & Security > Open Anyway and confirm. After mounting, drag Token Usage.app into Applications. If the app is also blocked, repeat Open Anyway for the installed app. Only approve downloads you trust from this repository.
 
           The unversioned downloads are compatibility copies for older automatic updaters."

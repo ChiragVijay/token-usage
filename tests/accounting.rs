@@ -2,7 +2,7 @@ use chrono::{Duration, Utc};
 use serde_json::json;
 use std::fs;
 use tempfile::TempDir;
-use token_dock::{
+use token_usage::{
     analytics::{self, Period},
     config::Config,
     model::*,
@@ -631,7 +631,7 @@ fn parser_upgrade_invalidates_normalized_files_and_preserves_account_history() {
 
 #[test]
 fn agent_discovery_uses_installation_evidence_and_never_fabricates_accounts() {
-    use token_dock::providers::discovery::{self, Environment};
+    use token_usage::providers::discovery::{self, Environment};
     let dir = TempDir::new().unwrap();
     let env = Environment {
         home: dir.path().join("home"),

@@ -1,4 +1,4 @@
-# TokenDock
+# Token Usage
 
 A native Rust + GPUI app for tracking AI usage, costs, and account limits across ChatGPT (Codex), Claude Code, Cursor, Kiro, Antigravity, and OpenCode.
 
@@ -8,22 +8,22 @@ A native Rust + GPUI app for tracking AI usage, costs, and account limits across
 
 ## Get started
 
-Download the app from [GitHub Releases](https://github.com/ChiragVijay/token-dock/releases/latest):
+Download the app from [GitHub Releases](https://github.com/ChiragVijay/token-usage/releases/latest):
 
 | Platform | Download | Install |
 | --- | --- | --- |
-| Windows x64 | `token-dock-X.Y.Z.exe` | Run the download. It installs for the current user, with no admin prompt, to `%LOCALAPPDATA%\TokenDock\token-dock.exe` and adds a TokenDock shortcut at `%APPDATA%\Microsoft\Windows\Start Menu\Programs\TokenDock.lnk`. |
-| macOS 13 or later, Apple Silicon | `token-dock-X.Y.Z.dmg` | Open the disk image and drag **TokenDock.app** into **Applications**. |
+| Windows x64 | `token-usage-X.Y.Z.exe` | Run the download. It installs for the current user, with no admin prompt, to `%LOCALAPPDATA%\Token Usage\token-usage.exe` and adds a Token Usage shortcut at `%APPDATA%\Microsoft\Windows\Start Menu\Programs\Token Usage.lnk`. |
+| macOS 13 or later, Apple Silicon | `token-usage-X.Y.Z.dmg` | Open the disk image and drag **Token Usage.app** into **Applications**. |
 
-The macOS release supports Apple Silicon only; there is no Intel or universal DMG. These downloads do not require Rust or the development tools below. `X.Y.Z` is the release version. Unversioned `token-dock` and legacy `open-usage` downloads are identical compatibility copies for updaters that require fixed filenames.
+The macOS release supports Apple Silicon only; there is no Intel or universal DMG. These downloads do not require Rust or the development tools below. `X.Y.Z` is the release version. Unversioned `token-usage` and legacy `open-usage` downloads are identical compatibility copies for updaters that require fixed filenames.
 
 ### macOS first launch
 
 The DMG container is unsigned; the app inside is ad-hoc signed. Releases do not require a paid Apple Developer account and are not notarized, so macOS may show “Apple could not verify … is free of malware.” Ad-hoc signing verifies bundle integrity but does not establish an Apple-verified developer identity.
 
 1. Download the DMG from this repository's GitHub Releases and open it. If macOS blocks it, choose **Done**, then open **System Settings → Privacy & Security**, scroll to **Security**, and choose **Open Anyway** for that download. Confirm the prompt.
-2. Drag **TokenDock.app** into **Applications** and launch that installed copy.
-3. If macOS blocks the app too, repeat **Open Anyway** for **TokenDock.app** and confirm. Only grant this exception when you trust the download.
+2. Drag **Token Usage.app** into **Applications** and launch that installed copy.
+3. If macOS blocks the app too, repeat **Open Anyway** for **Token Usage.app** and confirm. Only grant this exception when you trust the download.
 
 This is [Apple's documented way to open an unnotarized app](https://support.apple.com/en-us/102445). The warning cannot be eliminated through ad-hoc signing. If macOS reports actual damage or malware instead, do not treat that as the same warning; download a fresh copy and report the error.
 
@@ -32,12 +32,12 @@ This is [Apple's documented way to open an unnotarized app](https://support.appl
 Install Rust **1.97.1** (or run `mise install`), then launch an optimized build:
 
 ```sh
-cargo run --release --bin token-dock
+cargo run --release --bin token-usage
 ```
 
-Windows requires Visual Studio Build Tools with Desktop development with C++ and a Windows SDK. macOS requires Xcode command-line tools. On Windows, launching the desktop program installs it for the current user and continues from `%LOCALAPPDATA%\TokenDock\token-dock.exe`.
+Windows requires Visual Studio Build Tools with Desktop development with C++ and a Windows SDK. macOS requires Xcode command-line tools. On Windows, launching the desktop program installs it for the current user and continues from `%LOCALAPPDATA%\Token Usage\token-usage.exe`.
 
-Sign in through your provider's app or CLI. TokenDock discovers existing logins and local history automatically. Use **Connections** to add a data folder or import a Cursor CSV.
+Sign in through your provider's app or CLI. Token Usage discovers existing logins and local history automatically. Use **Connections** to add a data folder or import a Cursor CSV.
 
 | Provider | Connection |
 | --- | --- |
@@ -62,7 +62,7 @@ Kiro credits and Antigravity quotas are verified with Windows CLI logins. OpenCo
 
 On Windows x64 and Apple Silicon Macs, the desktop app checks the latest stable GitHub release once per launch. A newer version offers **Update now** or **Delay**. Downloads and installation begin only when you choose **Update now**; the app then exits so a helper can replace it and relaunch it. **Delay** dismisses the offer for this launch, and the next launch checks again. You can also use **Settings → Updates → Check for updates**.
 
-On Windows, **Update now** replaces the per-user install at `%LOCALAPPDATA%\TokenDock\token-dock.exe` and relaunches it. That folder is only the program. Settings stay in `%LOCALAPPDATA%\token-dock`. On macOS, copy the app out of the DMG before updating. If the installed copy cannot be replaced, the downloaded EXE or DMG is opened for manual installation. Mac replacement prepares the new app on the installation volume and keeps the previous app until replacement succeeds. A failed replacement restores the previous app; if restoration also fails, its backup remains in a folder named `TokenDock.app.update-*` beside the installation.
+On Windows, **Update now** replaces the per-user install at `%LOCALAPPDATA%\Token Usage\token-usage.exe` and relaunches it. That folder is only the program. Settings stay in `%LOCALAPPDATA%\token-usage`. On macOS, copy the app out of the DMG before updating. If the installed copy cannot be replaced, the downloaded EXE or DMG is opened for manual installation. Mac replacement prepares the new app on the installation volume and keeps the previous app until replacement succeeds. A failed replacement restores the previous app; if restoration also fails, its backup remains in a folder named `Token Usage.app.update-*` beside the installation.
 
 Intel Mac builds and other architectures do not receive automatic updates. The CLI does not check for app updates.
 
@@ -80,7 +80,7 @@ cargo run --release --no-default-features --bin usage -- --online --period 7d --
 
 Use `--offline --refresh` to read local history and cached allowances. Periods: `2h`, `24h`, `7d`, `30d`, `90d`, or `today`. Run with `--help` for options.
 
-Settings and cache live in `%LOCALAPPDATA%/token-dock` on Windows or `~/Library/Application Support/token-dock` on macOS. `TOKEN_DOCK_DATA_DIR` overrides that location.
+Settings and cache live in `%LOCALAPPDATA%/token-usage` on Windows or `~/Library/Application Support/token-usage` on macOS. `TOKEN_USAGE_DATA_DIR` overrides that location.
 
 ## Development
 
@@ -100,7 +100,7 @@ After the **Release** workflow is merged into the default branch:
 1. Open **Actions → Release → Run workflow** and select `main`.
 2. Choose a `patch`, `minor`, or `major` version bump. Choose `finish` to build the current version and publish its existing draft without bumping again.
 3. Run the workflow. A bump updates `Cargo.toml` and `Cargo.lock`, commits that version to the selected branch, and creates the `vX.Y.Z` tag with a draft GitHub release. `finish` keeps the current version and the open draft.
-4. Windows and Apple Silicon macOS jobs build that commit and upload `token-dock-X.Y.Z.exe` and `token-dock-X.Y.Z.dmg`, plus identical unversioned `token-dock.exe`, `token-dock.dmg`, `open-usage.exe`, and `open-usage.dmg` copies for updaters that require fixed filenames. The Mac job verifies both the Rust host and packaged executable are ARM64, runs the update-helper regression checks, and runs `hdiutil verify` and `hdiutil attach` on the versioned DMG. The app remains ad-hoc signed; the DMG container is unsigned.
+4. Windows and Apple Silicon macOS jobs build that commit and upload `token-usage-X.Y.Z.exe` and `token-usage-X.Y.Z.dmg`, plus identical unversioned `token-usage.exe`, `token-usage.dmg`, `open-usage.exe`, and `open-usage.dmg` copies for updaters that require fixed filenames. The Mac job verifies both the Rust host and packaged executable are ARM64, runs the update-helper regression checks, and runs `hdiutil verify` and `hdiutil attach` on the versioned DMG. The app remains ad-hoc signed; the DMG container is unsigned.
 5. The publish job verifies all six assets exist, adds the macOS first-launch instructions to the release notes, then publishes the release so desktop update checks can discover it.
 
 The workflow needs permission to push the version commit and write releases; branch rules must allow that push. If packaging or publication fails, the release stays a draft. Run the workflow again with `finish` so that version gets both assets and is published. Do not start another bump while the draft is still open.

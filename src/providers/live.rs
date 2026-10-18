@@ -27,7 +27,7 @@ pub fn fetch(provider: Provider, homes: &[PathBuf], history: bool) -> Result<Liv
         .timeout(Duration::from_secs(12))
         .connect_timeout(Duration::from_secs(5))
         .redirect(reqwest::redirect::Policy::none())
-        .user_agent(concat!("TokenDock/", env!("CARGO_PKG_VERSION")))
+        .user_agent(concat!("TokenUsage/", env!("CARGO_PKG_VERSION")))
         .build()?;
     match provider {
         Provider::Codex => super::codex::fetch(&client, homes),

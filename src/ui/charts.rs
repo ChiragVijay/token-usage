@@ -2,7 +2,7 @@
 //! values and gridlines (or an x value axis for horizontal bars) and a labelled
 //! category axis.
 use super::*;
-use token_dock::analytics::Analysis;
+use token_usage::analytics::Analysis;
 
 pub const Y_AXIS_WIDTH: f32 = 48.;
 pub const X_AXIS_HEIGHT: f32 = 18.;
@@ -524,7 +524,7 @@ impl Dashboard {
         let dark = self.config.dark;
         let theme = self.theme();
         let accounts = self.visible_accounts();
-        let value_of = |bucket: &token_dock::analytics::Bucket, index: usize| {
+        let value_of = |bucket: &token_usage::analytics::Bucket, index: usize| {
             if self.token_chart {
                 bucket.tokens[index] as f64
             } else {

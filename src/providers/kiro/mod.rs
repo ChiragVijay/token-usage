@@ -45,7 +45,7 @@ fn cli_request(
         .header(
             "User-Agent",
             concat!(
-                "AmazonQ-For-CLI/1.24.0 ua/2.0 lang/rust TokenDock/",
+                "AmazonQ-For-CLI/1.24.0 ua/2.0 lang/rust TokenUsage/",
                 env!("CARGO_PKG_VERSION")
             ),
         )

@@ -3,13 +3,13 @@ mod ui;
 use gpui::{
     App, AppContext, Application, Bounds, TitlebarOptions, WindowBounds, WindowOptions, px, size,
 };
-gpui::actions!(token_dock, [Quit]);
+gpui::actions!(token_usage, [Quit]);
 
 fn main() {
     // A downloaded exe copies itself, starts the installed copy, and exits.
     // The lock belongs to the process that continues on and opens the window.
     #[cfg(windows)]
-    token_dock::install::install_and_handoff();
+    token_usage::install::install_and_handoff();
     #[cfg(windows)]
     if !ui::claim_single_instance() {
         std::process::exit(0);
@@ -22,8 +22,8 @@ fn main() {
             cx.bind_keys([gpui::KeyBinding::new("secondary-q", Quit, None)]);
             #[cfg(target_os = "macos")]
             cx.set_menus(vec![gpui::Menu {
-                name: "TokenDock".into(),
-                items: vec![gpui::MenuItem::action("Quit TokenDock", Quit)],
+                name: "Token Usage".into(),
+                items: vec![gpui::MenuItem::action("Quit Token Usage", Quit)],
             }]);
             let bounds = Bounds::centered(None, size(px(1280.), px(860.)), cx);
             let result = cx.open_window(
@@ -42,7 +42,7 @@ fn main() {
                 },
             );
             if result.is_err() {
-                eprintln!("TokenDock could not open its native window");
+                eprintln!("Token Usage could not open its native window");
                 cx.quit();
                 return;
             }
