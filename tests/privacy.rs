@@ -1,8 +1,3 @@
-use open_usage::{
-    config::Config,
-    model::{Provider, Snapshot},
-    store::Store,
-};
 use std::{
     io::Write,
     net::TcpListener,
@@ -13,6 +8,11 @@ use std::{
     },
     thread,
     time::Duration,
+};
+use token_dock::{
+    config::Config,
+    model::{Provider, Snapshot},
+    store::Store,
 };
 
 #[test]
@@ -81,13 +81,13 @@ fn offline_cli_does_not_fetch_missing_or_stale_prices() {
         let mut command = Command::new(env!("CARGO_BIN_EXE_usage"));
         for provider in Provider::ALL {
             command.env(
-                format!("OPEN_USAGE_{}_HOME", provider.key().to_ascii_uppercase()),
+                format!("TOKEN_DOCK_{}_HOME", provider.key().to_ascii_uppercase()),
                 dir.path().join(provider.key()),
             );
         }
         let output = command
             .args(["--offline", "--refresh", "--json"])
-            .env("OPEN_USAGE_DATA_DIR", dir.path())
+            .env("TOKEN_DOCK_DATA_DIR", dir.path())
             .env("HTTPS_PROXY", &proxy)
             .env("HTTP_PROXY", &proxy)
             .env("ALL_PROXY", &proxy)

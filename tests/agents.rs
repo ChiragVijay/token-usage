@@ -1,14 +1,14 @@
 use chrono::{DateTime, Utc};
-use open_usage::{
+use rusqlite::Connection;
+use serde_json::{Value, json};
+use std::fs;
+use tempfile::TempDir;
+use token_dock::{
     config::Config,
     model::{Provider, Snapshot},
     providers::{antigravity, kiro, opencode},
     store::Store,
 };
-use rusqlite::Connection;
-use serde_json::{Value, json};
-use std::fs;
-use tempfile::TempDir;
 
 #[test]
 fn old_settings_and_cache_preserve_original_accounts() {

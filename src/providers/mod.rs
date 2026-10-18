@@ -30,7 +30,7 @@ use std::{
 
 pub fn homes(provider: Provider, config: &Config) -> Vec<PathBuf> {
     if let Some(root) = std::env::var_os(format!(
-        "OPEN_USAGE_{}_HOME",
+        "TOKEN_DOCK_{}_HOME",
         provider.key().to_ascii_uppercase()
     )) {
         let mut paths = vec![PathBuf::from(root)];

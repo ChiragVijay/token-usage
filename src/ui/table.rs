@@ -1,8 +1,8 @@
-use open_usage::{
+use std::cmp::Ordering;
+use token_dock::{
     analytics::{self, ModelRow, ProjectRow, Totals},
     model::UsageRecord,
 };
-use std::cmp::Ordering;
 
 #[derive(Clone, Copy, Debug, PartialEq, Eq)]
 pub enum Table {
@@ -222,7 +222,7 @@ pub fn matches_query(query: &str, fields: &[&str]) -> bool {
 mod tests {
     use super::*;
     use chrono::{TimeZone, Utc};
-    use open_usage::model::{Provider, Tokens};
+    use token_dock::model::{Provider, Tokens};
     fn row(model: &str, tokens: u64, cost: Option<f64>) -> ModelRow {
         ModelRow {
             model: model.into(),

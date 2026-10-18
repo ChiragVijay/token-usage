@@ -1,7 +1,7 @@
 use super::*;
 use chrono::Local;
 use gpui_component::menu::{DropdownMenu, PopupMenuItem};
-use open_usage::{
+use token_dock::{
     analytics::Totals,
     model::{LimitWindow, Provider, ProviderStatus, UsageRecord},
 };
@@ -82,7 +82,7 @@ impl Dashboard {
                             ),
                     )
                     .when(!rail, |row| {
-                        row.child(title("Open Usage", theme).min_w_0().truncate())
+                        row.child(title("TokenDock", theme).min_w_0().truncate())
                     }),
             )
             .child(
@@ -1154,7 +1154,7 @@ impl Dashboard {
     }
     fn model_row(
         &self,
-        row: &open_usage::analytics::ModelRow,
+        row: &token_dock::analytics::ModelRow,
         index: usize,
         columns: &[(Column, f32)],
         narrow: bool,
@@ -2012,7 +2012,7 @@ impl Dashboard {
     pub(super) fn settings(&self, width: f32, cx: &Context<Self>) -> Div {
         let theme = self.theme();
         let narrow = width < 700.;
-        let intervals = open_usage::config::REFRESH_INTERVALS
+        let intervals = token_dock::config::REFRESH_INTERVALS
             .into_iter()
             .map(|seconds| {
                 Segment::new(
@@ -2172,7 +2172,7 @@ impl Dashboard {
                     "Checks the latest stable GitHub release".into()
                 };
                 self.preference_row(
-                    &format!("Version {}", open_usage::update::current_version()),
+                    &format!("Version {}", token_dock::update::current_version()),
                     &note,
                     self.button(
                         "settings-update",
@@ -2633,7 +2633,7 @@ mod tests {
 
     #[test]
     fn status_lines_with_separators_are_not_errors() {
-        let sep = open_usage::analytics::separator();
+        let sep = token_dock::analytics::separator();
         assert!(!reported_error(&format!(
             "Account history{sep}across your machines"
         )));

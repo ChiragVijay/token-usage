@@ -1,7 +1,7 @@
 use gpui::{App, Window};
 
 /// Native window title. The Windows single-instance lookup uses this exact text.
-pub const WINDOW_TITLE: &str = "Open Usage";
+pub const WINDOW_TITLE: &str = "TokenDock";
 
 /// Switch to a menu-bar app only after its tray icon is available.
 pub fn configure_tray_app() {
@@ -128,7 +128,7 @@ pub fn claim_single_instance() -> bool {
     let handle = unsafe {
         // CreateMutex leaves a stale last-error when it creates the object.
         SetLastError(WIN32_ERROR(0));
-        match CreateMutexW(None, true, w!("Local\\dev.chirag.open-usage")) {
+        match CreateMutexW(None, true, w!("Local\\dev.chirag.token-dock")) {
             Ok(handle) => handle,
             // Opening the window is safer than exiting when the lock cannot be created.
             Err(_) => return true,
@@ -244,7 +244,7 @@ mod tests {
 
     #[test]
     fn window_title_is_the_single_instance_lookup_text() {
-        assert_eq!(WINDOW_TITLE, "Open Usage");
+        assert_eq!(WINDOW_TITLE, "TokenDock");
         assert!(WINDOW_TITLE.is_ascii());
     }
 

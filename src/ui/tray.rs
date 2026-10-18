@@ -15,7 +15,7 @@ pub fn create() -> anyhow::Result<Tray> {
     let overview = MenuItem::new("Open dashboard", true, None);
     let compact = MenuItem::new("Quick view", true, None);
     let refresh = MenuItem::new("Refresh usage", true, None);
-    let quit = MenuItem::new("Quit Open Usage", true, None);
+    let quit = MenuItem::new("Quit TokenDock", true, None);
     menu.append_items(&[
         &overview,
         &compact,
@@ -40,7 +40,7 @@ pub fn create() -> anyhow::Result<Tray> {
     }
     let icon = TrayIconBuilder::new()
         .with_icon(Icon::from_rgba(pixels, 32, 32)?)
-        .with_tooltip("Open Usage")
+        .with_tooltip("TokenDock")
         .with_menu(Box::new(menu))
         .with_icon_as_template(cfg!(target_os = "macos"))
         .with_menu_on_left_click(cfg!(target_os = "macos"))

@@ -4394,36 +4394,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "open-usage"
-version = "0.2.3"
-dependencies = [
- "anyhow",
- "base64 0.22.1",
- "chrono",
- "csv",
- "dirs 6.0.0",
- "gpui",
- "gpui-component",
- "objc2",
- "objc2-app-kit",
- "open",
- "raw-window-handle",
- "reqwest",
- "rfd",
- "rusqlite",
- "serde",
- "serde_json",
- "sha2 0.10.9",
- "tempfile",
- "tray-icon",
- "urlencoding",
- "walkdir",
- "windows 0.61.3",
- "windows-sys 0.61.2",
- "winresource",
-]
-
-[[package]]
 name = "openssl-probe"
 version = "0.2.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -6596,6 +6566,36 @@ name = "tinyvec"
 version = "1.13.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "fd3ca314f692efd6c868f8408f53fe444634a845f96c028b97d35f6a1f79f0ee"
+
+[[package]]
+name = "token-dock"
+version = "0.2.3"
+dependencies = [
+ "anyhow",
+ "base64 0.22.1",
+ "chrono",
+ "csv",
+ "dirs 6.0.0",
+ "gpui",
+ "gpui-component",
+ "objc2",
+ "objc2-app-kit",
+ "open",
+ "raw-window-handle",
+ "reqwest",
+ "rfd",
+ "rusqlite",
+ "serde",
+ "serde_json",
+ "sha2 0.10.9",
+ "tempfile",
+ "tray-icon",
+ "urlencoding",
+ "walkdir",
+ "windows 0.61.3",
+ "windows-sys 0.61.2",
+ "winresource",
+]
 
 [[package]]
 name = "tokio"

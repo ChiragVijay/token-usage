@@ -12,21 +12,21 @@ jobs:
       - name: Build and mount a disk image
         run: |
           set -euo pipefail
-          app="fixture/Open Usage.app"
+          app="fixture/TokenDock.app"
           mkdir -p "$app/Contents/MacOS" "$app/Contents/Resources"
-          clang -arch arm64 -mmacosx-version-min=13.0 -o "$app/Contents/MacOS/open-usage" -x c - <<'EOF'
+          clang -arch arm64 -mmacosx-version-min=13.0 -o "$app/Contents/MacOS/token-dock" -x c - <<'EOF'
           int main(void) { return 0; }
           EOF
-          chmod +x "$app/Contents/MacOS/open-usage"
+          chmod +x "$app/Contents/MacOS/token-dock"
           cat > "$app/Contents/Info.plist" <<'EOF'
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
           <plist version="1.0">
           <dict>
-          <key>CFBundleName</key><string>Open Usage</string>
-          <key>CFBundleDisplayName</key><string>Open Usage</string>
-          <key>CFBundleIdentifier</key><string>dev.chirag.open-usage</string>
-          <key>CFBundleExecutable</key><string>open-usage</string>
+          <key>CFBundleName</key><string>TokenDock</string>
+          <key>CFBundleDisplayName</key><string>TokenDock</string>
+          <key>CFBundleIdentifier</key><string>dev.chirag.token-dock</string>
+          <key>CFBundleExecutable</key><string>token-dock</string>
           <key>CFBundlePackageType</key><string>APPL</string>
           <key>CFBundleInfoDictionaryVersion</key><string>6.0</string>
           <key>CFBundleShortVersionString</key><string>0.0.0</string>
@@ -36,4 +36,4 @@ jobs:
           </plist>
           EOF
           printf 'APPL????' > "$app/Contents/PkgInfo"
-          sh tests/macos-dmg.sh "$app" open-usage.dmg
+          sh tests/macos-dmg.sh "$app" token-dock.dmg

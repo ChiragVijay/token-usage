@@ -81,14 +81,14 @@ jobs:
           lock_path = pathlib.Path("Cargo.lock")
           lock = lock_path.read_text()
           updated, count = re.subn(
-              r'(name = "open-usage"\nversion = ")\d+\.\d+\.\d+(")',
+              r'(name = "token-dock"\nversion = ")\d+\.\d+\.\d+(")',
               rf"\g<1>{new}\2",
               lock,
               count=1,
           )
           if count != 1:
               sys.exit(
-                  f"Expected to update the open-usage version in Cargo.lock once, updated {count}"
+                  f"Expected to update the token-dock version in Cargo.lock once, updated {count}"
               )
           lock_path.write_text(updated)
           print(new)
@@ -116,7 +116,7 @@ jobs:
             --target "$SHA" \
             --title "v${VERSION}" \
             --draft \
-            --notes "Open Usage ${VERSION}. Downloads: open-usage.exe and open-usage.dmg."
+            --notes "TokenDock ${VERSION}. Downloads: token-dock.exe and token-dock.dmg."
 
   windows:
     name: Windows
@@ -142,14 +142,14 @@ jobs:
       - name: Prepare Windows exe
         shell: pwsh
         run: |
-          Copy-Item "dist\Open Usage-windows\Open Usage.exe" "open-usage.exe"
-          if (-not (Test-Path "open-usage.exe")) { throw "open-usage.exe was not produced" }
+          Copy-Item "dist\TokenDock-windows\TokenDock.exe" "token-dock.exe"
+          if (-not (Test-Path "token-dock.exe")) { throw "token-dock.exe was not produced" }
       - name: Upload release asset
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: v${{ needs.bump.outputs.version }}
-        run: gh release upload "$env:TAG" open-usage.exe --clobber
+        run: gh release upload "$env:TAG" token-dock.exe --clobber
 
   macos:
     name: macOS (Apple Silicon)
@@ -184,14 +184,14 @@ jobs:
       - name: Build Mac disk image
         run: |
           set -euo pipefail
-          test -d "dist/Open Usage.app"
-          test "$(lipo -archs 'dist/Open Usage.app/Contents/MacOS/open-usage')" = "arm64"
-          sh tests/macos-dmg.sh "dist/Open Usage.app" open-usage.dmg
+          test -d "dist/TokenDock.app"
+          test "$(lipo -archs 'dist/TokenDock.app/Contents/MacOS/token-dock')" = "arm64"
+          sh tests/macos-dmg.sh "dist/TokenDock.app" token-dock.dmg
       - name: Upload release asset
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: v${{ needs.bump.outputs.version }}
-        run: gh release upload "$TAG" open-usage.dmg --clobber
+        run: gh release upload "$TAG" token-dock.dmg --clobber
 
   publish:
     name: Publish
@@ -207,6 +207,6 @@ jobs:
           assets="$(gh release view "$TAG" --json assets --jq '.assets[].name')"
           printf '%s\n' "$assets"
           printf '%s\n' "$assets" > release-assets.txt
-          grep -qx "open-usage.exe" release-assets.txt
-          grep -qx "open-usage.dmg" release-assets.txt
+          grep -qx "token-dock.exe" release-assets.txt
+          grep -qx "token-dock.dmg" release-assets.txt
           gh release edit "$TAG" --draft=false

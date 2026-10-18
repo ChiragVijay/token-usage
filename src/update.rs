@@ -10,9 +10,9 @@ use std::{
     process::{Command, Stdio},
 };
 
-const LATEST: &str = "https://api.github.com/repos/ChiragVijay/open-usage/releases/latest";
-const WINDOWS_ASSET: &str = "open-usage.exe";
-const MAC_ASSET: &str = "open-usage.dmg";
+const LATEST: &str = "https://api.github.com/repos/ChiragVijay/token-dock/releases/latest";
+const WINDOWS_ASSET: &str = "token-dock.exe";
+const MAC_ASSET: &str = "token-dock.dmg";
 #[cfg(any(windows, target_os = "macos"))]
 const OPENED: &str =
     "The update was downloaded. It could not replace this copy, so the file was opened.";
@@ -144,7 +144,7 @@ fn trusted_download(url: &str) -> bool {
         && url.host_str() == Some("github.com")
         && url
             .path()
-            .starts_with("/ChiragVijay/open-usage/releases/download/")
+            .starts_with("/ChiragVijay/token-dock/releases/download/")
 }
 
 fn fetch_latest() -> Result<String, String> {
@@ -170,7 +170,7 @@ fn client() -> Result<reqwest::blocking::Client, String> {
         .https_only(true)
         .connect_timeout(Duration::from_secs(15))
         .timeout(Duration::from_secs(600))
-        .user_agent(concat!("OpenUsage/", env!("CARGO_PKG_VERSION")))
+        .user_agent(concat!("TokenDock/", env!("CARGO_PKG_VERSION")))
         .build()
         .map_err(|_| "The update client could not start.".into())
 }
@@ -207,7 +207,7 @@ fn update_dir() -> Result<PathBuf, String> {
 
 #[cfg(any(windows, target_os = "macos"))]
 fn directory_writable(dir: &Path) -> bool {
-    let probe = dir.join(".open-usage-write-probe");
+    let probe = dir.join(".token-dock-write-probe");
     fs::write(&probe, b"").is_ok() && fs::remove_file(&probe).is_ok()
 }
 
@@ -238,9 +238,9 @@ fn open_file(path: &Path) -> Result<(), String> {
                 "-WindowStyle",
                 "Hidden",
                 "-Command",
-                "$ErrorActionPreference = 'Stop'; Start-Process -FilePath $env:OPEN_USAGE_FILE",
+                "$ErrorActionPreference = 'Stop'; Start-Process -FilePath $env:TOKEN_DOCK_FILE",
             ])
-            .env("OPEN_USAGE_FILE", path);
+            .env("TOKEN_DOCK_FILE", path);
         command
     } else if cfg!(target_os = "macos") {
         let mut command = Command::new("/usr/bin/open");
@@ -270,7 +270,7 @@ fn opened(path: &Path) -> Result<Install, String> {
 
 /// Where a Windows update is stored and which file it replaces.
 /// The destination is always the running executable. After the per-user
-/// install, that file is `%LOCALAPPDATA%\Open Usage\open-usage.exe`.
+/// install, that file is `%LOCALAPPDATA%\TokenDock\token-dock.exe`.
 #[cfg(any(test, windows))]
 pub(crate) fn windows_update_files(
     running: &Path,
@@ -281,7 +281,7 @@ pub(crate) fn windows_update_files(
         running
             .parent()
             .unwrap_or(Path::new("."))
-            .join("open-usage.update.exe")
+            .join("token-dock.update.exe")
     } else {
         update_dir.join(WINDOWS_ASSET)
     };
@@ -398,12 +398,12 @@ fn stage_app(dmg: &Path, dir: &Path) -> Option<PathBuf> {
         .status()
         .map(|status| status.success())
         .unwrap_or(false);
-    let staged = dir.join("stage").join("Open Usage.app");
+    let staged = dir.join("stage").join("TokenDock.app");
     let copied = attached && {
         let _ = fs::remove_dir_all(dir.join("stage"));
         fs::create_dir_all(dir.join("stage")).is_ok()
             && Command::new("/usr/bin/ditto")
-                .arg(mount.join("Open Usage.app"))
+                .arg(mount.join("TokenDock.app"))
                 .arg(&staged)
                 .stdin(Stdio::null())
                 .stdout(Stdio::null())
@@ -411,7 +411,7 @@ fn stage_app(dmg: &Path, dir: &Path) -> Option<PathBuf> {
                 .status()
                 .map(|status| status.success())
                 .unwrap_or(false)
-            && staged.join("Contents/MacOS/open-usage").is_file()
+            && staged.join("Contents/MacOS/token-dock").is_file()
     };
     let _ = Command::new("/usr/bin/hdiutil")
         .args(["detach", "-force"])
@@ -470,7 +470,7 @@ mod tests {
 
     fn asset(name: &str) -> String {
         format!(
-            r#"{{"name":"{name}","browser_download_url":"https://github.com/ChiragVijay/open-usage/releases/download/v0.3.0/{name}"}}"#
+            r#"{{"name":"{name}","browser_download_url":"https://github.com/ChiragVijay/token-dock/releases/download/v0.3.0/{name}"}}"#
         )
     }
 
@@ -512,18 +512,18 @@ mod tests {
             "v0.3.0",
             false,
             false,
-            &format!("{},{}", asset("open-usage.exe"), asset("open-usage.dmg")),
+            &format!("{},{}", asset("token-dock.exe"), asset("token-dock.dmg")),
         );
         let exe = decide(&body, "0.2.0", WINDOWS_ASSET).unwrap();
         match exe {
             Check::Available(offer) => {
                 assert_eq!(offer.version, "0.3.0");
-                assert!(offer.url.ends_with("/open-usage.exe"));
+                assert!(offer.url.ends_with("/token-dock.exe"));
             }
             _ => panic!("expected the exe"),
         }
         let dmg = decide(&body, "0.2.0", MAC_ASSET).unwrap();
-        assert!(matches!(dmg, Check::Available(offer) if offer.url.ends_with("/open-usage.dmg")));
+        assert!(matches!(dmg, Check::Available(offer) if offer.url.ends_with("/token-dock.dmg")));
         assert!(matches!(
             decide(&body, "0.3.0", WINDOWS_ASSET).unwrap(),
             Check::Current
@@ -565,47 +565,47 @@ mod tests {
     #[test]
     fn downloads_must_come_from_this_repository() {
         assert!(trusted_download(
-            "https://github.com/ChiragVijay/open-usage/releases/download/v0.3.0/open-usage.exe"
+            "https://github.com/ChiragVijay/token-dock/releases/download/v0.3.0/token-dock.exe"
         ));
         assert!(!trusted_download(
-            "https://example.com/ChiragVijay/open-usage/releases/download/v0.3.0/open-usage.exe"
+            "https://example.com/ChiragVijay/token-dock/releases/download/v0.3.0/token-dock.exe"
         ));
         assert!(!trusted_download(
-            "https://github.com/other/open-usage/releases/download/v0.3.0/open-usage.exe"
+            "https://github.com/other/token-dock/releases/download/v0.3.0/token-dock.exe"
         ));
         assert_eq!(
             LATEST,
-            "https://api.github.com/repos/ChiragVijay/open-usage/releases/latest"
+            "https://api.github.com/repos/ChiragVijay/token-dock/releases/latest"
         );
     }
 
     #[test]
     fn an_app_bundle_is_the_folder_around_the_running_executable() {
         let bundle = app_bundle(Path::new(
-            "/Applications/Open Usage.app/Contents/MacOS/open-usage",
+            "/Applications/TokenDock.app/Contents/MacOS/token-dock",
         ))
         .unwrap();
-        assert_eq!(bundle, Path::new("/Applications/Open Usage.app"));
-        assert!(app_bundle(Path::new("/tmp/open-usage")).is_none());
+        assert_eq!(bundle, Path::new("/Applications/TokenDock.app"));
+        assert!(app_bundle(Path::new("/tmp/token-dock")).is_none());
     }
 
     #[test]
     fn windows_update_replaces_the_running_executable() {
-        let install = Path::new("Local").join("Open Usage").join("open-usage.exe");
-        let updates = Path::new("Local").join("open-usage").join("updates");
+        let install = Path::new("Local").join("TokenDock").join("token-dock.exe");
+        let updates = Path::new("Local").join("token-dock").join("updates");
         let (source, destination) = windows_update_files(&install, true, &updates);
         assert_eq!(destination, install);
         assert_eq!(
             source,
             Path::new("Local")
-                .join("Open Usage")
-                .join("open-usage.update.exe")
+                .join("TokenDock")
+                .join("token-dock.update.exe")
         );
         assert_ne!(destination, updates.join(WINDOWS_ASSET));
         let (source, destination) = windows_update_files(&install, false, &updates);
         assert_eq!(destination, install);
         assert_eq!(source, updates.join(WINDOWS_ASSET));
-        let installed = Path::new(r"C:\Users\Ada\AppData\Local\Open Usage\open-usage.exe");
+        let installed = Path::new(r"C:\Users\Ada\AppData\Local\TokenDock\token-dock.exe");
         let (_, destination) = windows_update_files(installed, true, &updates);
         assert_eq!(destination, installed);
     }

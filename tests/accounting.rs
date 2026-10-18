@@ -1,14 +1,14 @@
 use chrono::{Duration, Utc};
-use open_usage::{
+use serde_json::json;
+use std::fs;
+use tempfile::TempDir;
+use token_dock::{
     analytics::{self, Period},
     config::Config,
     model::*,
     providers::{history, live},
     store::Store,
 };
-use serde_json::json;
-use std::fs;
-use tempfile::TempDir;
 
 fn fixture(text: &str, extension: &str) -> (TempDir, std::path::PathBuf) {
     let dir = TempDir::new().unwrap();
@@ -631,7 +631,7 @@ fn parser_upgrade_invalidates_normalized_files_and_preserves_account_history() {
 
 #[test]
 fn agent_discovery_uses_installation_evidence_and_never_fabricates_accounts() {
-    use open_usage::providers::discovery::{self, Environment};
+    use token_dock::providers::discovery::{self, Environment};
     let dir = TempDir::new().unwrap();
     let env = Environment {
         home: dir.path().join("home"),

@@ -1,5 +1,5 @@
 use gpui::{Div, FontWeight, SharedString, Svg, div, prelude::*, px, relative, rgb};
-use open_usage::model::Provider;
+use token_dock::model::Provider;
 
 #[derive(Clone, Copy)]
 pub struct Theme {

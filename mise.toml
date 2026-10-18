@@ -2,7 +2,7 @@
 rust = "1.97.1"
 
 [tasks.dev]
-run = "cargo run --bin open-usage"
+run = "cargo run --bin token-dock"
 
 [tasks.check]
 run = "cargo check --all-targets"
@@ -14,7 +14,7 @@ run = "cargo test --no-default-features"
 run = "cargo clippy --all-targets -- -D warnings"
 
 [tasks.build]
-run = "cargo build --release --bin open-usage"
+run = "cargo build --release --bin token-dock"
 
 [tasks.package]
 run = "cargo run --bin package"

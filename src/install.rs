@@ -1,9 +1,9 @@
 //! Per-user Windows install.
 //!
-//! The release download stays `open-usage.exe`. When that file is launched from
-//! anywhere else, it is copied to `%LOCALAPPDATA%\Open Usage\open-usage.exe`,
+//! The release download stays `token-dock.exe`. When that file is launched from
+//! anywhere else, it is copied to `%LOCALAPPDATA%\TokenDock\token-dock.exe`,
 //! a Start menu shortcut is created, and the installed copy is started.
-//! Settings remain in `%LOCALAPPDATA%\open-usage`.
+//! Settings remain in `%LOCALAPPDATA%\token-dock`.
 //!
 //! This process exits after it starts the installed copy. It does not take the
 //! single-instance lock, so the short-lived installer cannot block that copy.
@@ -14,9 +14,9 @@ use std::{
     path::{Path, PathBuf},
 };
 
-const INSTALL_DIRECTORY: &str = "Open Usage";
-const INSTALL_FILE: &str = "open-usage.exe";
-const SHORTCUT_FILE: &str = "Open Usage.lnk";
+const INSTALL_DIRECTORY: &str = "TokenDock";
+const INSTALL_FILE: &str = "token-dock.exe";
+const SHORTCUT_FILE: &str = "TokenDock.lnk";
 
 #[derive(Debug, PartialEq, Eq)]
 pub(crate) enum Action {
@@ -144,7 +144,7 @@ pub(crate) fn copy_into_place(source: &Path, dest: &Path) -> std::io::Result<()>
 }
 
 fn stage_replacement(source: &Path, installed: &Path) -> std::io::Result<PathBuf> {
-    let stage = installed.with_file_name("open-usage.update.exe");
+    let stage = installed.with_file_name("token-dock.update.exe");
     copy_into_place(source, &stage)?;
     Ok(stage)
 }
@@ -244,9 +244,9 @@ fn process_id(exe: &Path) -> Option<u32> {
             "-ExecutionPolicy",
             "Bypass",
             "-Command",
-            "$want = [IO.Path]::GetFullPath($env:OPEN_USAGE_INSTALL); Get-CimInstance Win32_Process -Filter \"Name = 'open-usage.exe'\" | Where-Object { $_.ExecutablePath -and ([IO.Path]::GetFullPath($_.ExecutablePath) -ieq $want) } | Select-Object -First 1 -ExpandProperty ProcessId",
+            "$want = [IO.Path]::GetFullPath($env:TOKEN_DOCK_INSTALL); Get-CimInstance Win32_Process -Filter \"Name = 'token-dock.exe'\" | Where-Object { $_.ExecutablePath -and ([IO.Path]::GetFullPath($_.ExecutablePath) -ieq $want) } | Select-Object -First 1 -ExpandProperty ProcessId",
         ])
-        .env("OPEN_USAGE_INSTALL", exe)
+        .env("TOKEN_DOCK_INSTALL", exe)
         .stdin(Stdio::null())
         .stdout(Stdio::piped())
         .stderr(Stdio::null())
@@ -275,10 +275,10 @@ fn write_shortcut(shortcut: &Path, target: &Path) -> std::io::Result<()> {
             "-ExecutionPolicy",
             "Bypass",
             "-Command",
-            "$ErrorActionPreference = 'Stop'; $shell = New-Object -ComObject WScript.Shell; $link = $shell.CreateShortcut($env:OPEN_USAGE_SHORTCUT); $link.TargetPath = $env:OPEN_USAGE_TARGET; $link.WorkingDirectory = Split-Path -LiteralPath $env:OPEN_USAGE_TARGET; $link.Save()",
+            "$ErrorActionPreference = 'Stop'; $shell = New-Object -ComObject WScript.Shell; $link = $shell.CreateShortcut($env:TOKEN_DOCK_SHORTCUT); $link.TargetPath = $env:TOKEN_DOCK_TARGET; $link.WorkingDirectory = Split-Path -LiteralPath $env:TOKEN_DOCK_TARGET; $link.Save()",
         ])
-        .env("OPEN_USAGE_SHORTCUT", shortcut)
-        .env("OPEN_USAGE_TARGET", target)
+        .env("TOKEN_DOCK_SHORTCUT", shortcut)
+        .env("TOKEN_DOCK_TARGET", target)
         .stdin(Stdio::null())
         .stdout(Stdio::null())
         .stderr(Stdio::null())
@@ -318,24 +318,24 @@ mod tests {
         let roaming = Path::new(r"C:\Users\Ada\AppData\Roaming");
         assert_eq!(
             path_key(&install_exe(local)),
-            r"c:\users\ada\appdata\local\open usage\open-usage.exe"
+            r"c:\users\ada\appdata\local\tokendock\token-dock.exe"
         );
         assert_eq!(
             path_key(&start_menu_shortcut(roaming)),
-            r"c:\users\ada\appdata\roaming\microsoft\windows\start menu\programs\open usage.lnk"
+            r"c:\users\ada\appdata\roaming\microsoft\windows\start menu\programs\tokendock.lnk"
         );
         assert_ne!(
             install_exe(local)
                 .parent()
                 .and_then(|path| path.file_name()),
-            Some(std::ffi::OsStr::new("open-usage"))
+            Some(std::ffi::OsStr::new("token-dock"))
         );
     }
 
     #[test]
     fn handoff_logic_does_not_write_a_start_menu_shortcut() {
         let root = tempfile::tempdir().unwrap();
-        let current = root.path().join("Downloads").join("open-usage.exe");
+        let current = root.path().join("Downloads").join("token-dock.exe");
         fs::create_dir_all(current.parent().unwrap()).unwrap();
         fs::write(&current, b"version-two").unwrap();
         let installed = install_exe(&root.path().join("Local"));
@@ -358,7 +358,7 @@ mod tests {
             Action::ReplaceAfterExit { process_id: 7 }
         );
         let stage = stage_replacement(&current, &installed).unwrap();
-        assert_eq!(stage.file_name().unwrap(), "open-usage.update.exe");
+        assert_eq!(stage.file_name().unwrap(), "token-dock.update.exe");
         assert_eq!(fs::read(&stage).unwrap(), b"version-xxx");
         assert_eq!(fs::read(&installed).unwrap(), b"version-two");
         assert_eq!(decide(&current, &installed, None, true), Action::Run);
@@ -377,8 +377,8 @@ mod tests {
         fs::write(&installed, &big).unwrap();
         assert!(same_contents(&current, &installed));
 
-        let extended = Path::new(r"\\?\C:\Users\Ada\AppData\Local\Open Usage\open-usage.exe");
-        let install = Path::new(r"C:\Users\Ada\AppData\Local\Open Usage\open-usage.exe");
+        let extended = Path::new(r"\\?\C:\Users\Ada\AppData\Local\TokenDock\token-dock.exe");
+        let install = Path::new(r"C:\Users\Ada\AppData\Local\TokenDock\token-dock.exe");
         assert!(same_location(extended, install));
         assert_eq!(decide(extended, install, Some(7), true), Action::Run);
         assert!(!shortcut.exists());
