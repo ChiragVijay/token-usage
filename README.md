@@ -12,10 +12,20 @@ Download the app from [GitHub Releases](https://github.com/ChiragVijay/token-doc
 
 | Platform | Download | Install |
 | --- | --- | --- |
-| Windows x64 | `token-dock.exe` | Run the download. It installs for the current user, with no admin prompt, to `%LOCALAPPDATA%\TokenDock\token-dock.exe` and adds a TokenDock shortcut at `%APPDATA%\Microsoft\Windows\Start Menu\Programs\TokenDock.lnk`. |
-| macOS 13 or later, Apple Silicon | `token-dock.dmg` | Open the disk image and drag **TokenDock.app** into **Applications**. |
+| Windows x64 | `token-dock-X.Y.Z.exe` | Run the download. It installs for the current user, with no admin prompt, to `%LOCALAPPDATA%\TokenDock\token-dock.exe` and adds a TokenDock shortcut at `%APPDATA%\Microsoft\Windows\Start Menu\Programs\TokenDock.lnk`. |
+| macOS 13 or later, Apple Silicon | `token-dock-X.Y.Z.dmg` | Open the disk image and drag **TokenDock.app** into **Applications**. |
 
-The macOS release supports Apple Silicon only; there is no Intel or universal DMG. The app inside the disk image is ad-hoc signed. Notarization is not configured, so a browser download may still be reported as damaged until it is notarized. These downloads do not require Rust or the development tools below.
+The macOS release supports Apple Silicon only; there is no Intel or universal DMG. These downloads do not require Rust or the development tools below. `X.Y.Z` is the release version. Unversioned `token-dock` and legacy `open-usage` downloads are identical compatibility copies for updaters that require fixed filenames.
+
+### macOS first launch
+
+The DMG container is unsigned; the app inside is ad-hoc signed. Releases do not require a paid Apple Developer account and are not notarized, so macOS may show “Apple could not verify … is free of malware.” Ad-hoc signing verifies bundle integrity but does not establish an Apple-verified developer identity.
+
+1. Download the DMG from this repository's GitHub Releases and open it. If macOS blocks it, choose **Done**, then open **System Settings → Privacy & Security**, scroll to **Security**, and choose **Open Anyway** for that download. Confirm the prompt.
+2. Drag **TokenDock.app** into **Applications** and launch that installed copy.
+3. If macOS blocks the app too, repeat **Open Anyway** for **TokenDock.app** and confirm. Only grant this exception when you trust the download.
+
+This is [Apple's documented way to open an unnotarized app](https://support.apple.com/en-us/102445). The warning cannot be eliminated through ad-hoc signing. If macOS reports actual damage or malware instead, do not treat that as the same warning; download a fresh copy and report the error.
 
 ### Build from source
 
@@ -81,7 +91,7 @@ cargo test --all-targets
 cargo run --bin package
 ```
 
-Packaging creates a release build in `dist/` for the current platform. The macOS app is ad-hoc signed. Notarization is not configured.
+Packaging creates a release build in `dist/` for the current platform. The macOS app is ad-hoc signed; the DMG container is unsigned. No Apple Developer credentials are needed. First-launch Gatekeeper approval is described above.
 
 ## Publishing a release
 
@@ -90,8 +100,8 @@ After the **Release** workflow is merged into the default branch:
 1. Open **Actions → Release → Run workflow** and select `main`.
 2. Choose a `patch`, `minor`, or `major` version bump. Choose `finish` to build the current version and publish its existing draft without bumping again.
 3. Run the workflow. A bump updates `Cargo.toml` and `Cargo.lock`, commits that version to the selected branch, and creates the `vX.Y.Z` tag with a draft GitHub release. `finish` keeps the current version and the open draft.
-4. Windows and Apple Silicon macOS jobs build that commit and upload `token-dock.exe` and `token-dock.dmg`. The Mac job verifies both the Rust host and packaged executable are ARM64, runs the update-helper regression checks, and runs `hdiutil verify` and `hdiutil attach` on `token-dock.dmg`.
-5. The publish job verifies both assets exist, then publishes the release so desktop update checks can discover it.
+4. Windows and Apple Silicon macOS jobs build that commit and upload `token-dock-X.Y.Z.exe` and `token-dock-X.Y.Z.dmg`, plus identical unversioned `token-dock.exe`, `token-dock.dmg`, `open-usage.exe`, and `open-usage.dmg` copies for updaters that require fixed filenames. The Mac job verifies both the Rust host and packaged executable are ARM64, runs the update-helper regression checks, and runs `hdiutil verify` and `hdiutil attach` on the versioned DMG. The app remains ad-hoc signed; the DMG container is unsigned.
+5. The publish job verifies all six assets exist, adds the macOS first-launch instructions to the release notes, then publishes the release so desktop update checks can discover it.
 
 The workflow needs permission to push the version commit and write releases; branch rules must allow that push. If packaging or publication fails, the release stays a draft. Run the workflow again with `finish` so that version gets both assets and is published. Do not start another bump while the draft is still open.
 

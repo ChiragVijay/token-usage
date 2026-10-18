@@ -124,7 +124,18 @@ pub(crate) fn decide(body: &str, current: &str, asset: &str) -> Result<Check, St
         return Ok(Check::Current);
     }
     let version = format!("{}.{}.{}", latest.0, latest.1, latest.2);
-    let Some(asset) = release.assets.iter().find(|item| item.name == asset) else {
+    // Prefer the versioned download, with a fallback for older releases.
+    // Local install and staging names stay stable regardless of the asset name.
+    let versioned = asset
+        .rsplit_once('.')
+        .map(|(stem, extension)| format!("{stem}-{version}.{extension}"))
+        .unwrap_or_else(|| asset.to_string());
+    let Some(asset) = release
+        .assets
+        .iter()
+        .find(|item| item.name == versioned)
+        .or_else(|| release.assets.iter().find(|item| item.name == asset))
+    else {
         return Ok(Check::MissingDownload { version });
     };
     if !trusted_download(&asset.browser_download_url) {

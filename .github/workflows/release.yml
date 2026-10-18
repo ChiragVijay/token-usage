@@ -116,7 +116,7 @@ jobs:
             --target "$SHA" \
             --title "v${VERSION}" \
             --draft \
-            --notes "TokenDock ${VERSION}. Downloads: token-dock.exe and token-dock.dmg."
+            --notes "TokenDock ${VERSION}. Release downloads are being prepared."
 
   windows:
     name: Windows
@@ -141,15 +141,20 @@ jobs:
         run: target/release/package.exe --skip-build
       - name: Prepare Windows exe
         shell: pwsh
+        env:
+          VERSION: ${{ needs.bump.outputs.version }}
         run: |
-          Copy-Item "dist\TokenDock-windows\TokenDock.exe" "token-dock.exe"
-          if (-not (Test-Path "token-dock.exe")) { throw "token-dock.exe was not produced" }
+          Copy-Item "dist\TokenDock-windows\TokenDock.exe" "token-dock-$env:VERSION.exe"
+          # Already-installed clients select this exact name.
+          Copy-Item "token-dock-$env:VERSION.exe" "token-dock.exe"
+          Copy-Item "token-dock-$env:VERSION.exe" "open-usage.exe"
       - name: Upload release asset
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: v${{ needs.bump.outputs.version }}
-        run: gh release upload "$env:TAG" token-dock.exe --clobber
+          VERSION: ${{ needs.bump.outputs.version }}
+        run: gh release upload "$env:TAG" "token-dock-$env:VERSION.exe" token-dock.exe open-usage.exe --clobber
 
   macos:
     name: macOS (Apple Silicon)
@@ -182,16 +187,22 @@ jobs:
       - name: Package
         run: target/release/package --skip-build
       - name: Build Mac disk image
+        env:
+          VERSION: ${{ needs.bump.outputs.version }}
         run: |
           set -euo pipefail
           test -d "dist/TokenDock.app"
           test "$(lipo -archs 'dist/TokenDock.app/Contents/MacOS/token-dock')" = "arm64"
-          sh tests/macos-dmg.sh "dist/TokenDock.app" token-dock.dmg
+          sh tests/macos-dmg.sh "dist/TokenDock.app" "token-dock-${VERSION}.dmg"
+          # Already-installed clients select this exact name.
+          cp "token-dock-${VERSION}.dmg" token-dock.dmg
+          cp "token-dock-${VERSION}.dmg" open-usage.dmg
       - name: Upload release asset
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: v${{ needs.bump.outputs.version }}
-        run: gh release upload "$TAG" token-dock.dmg --clobber
+          VERSION: ${{ needs.bump.outputs.version }}
+        run: gh release upload "$TAG" "token-dock-${VERSION}.dmg" token-dock.dmg open-usage.dmg --clobber
 
   publish:
     name: Publish
@@ -202,11 +213,21 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: v${{ needs.bump.outputs.version }}
+          VERSION: ${{ needs.bump.outputs.version }}
         run: |
           set -euo pipefail
           assets="$(gh release view "$TAG" --json assets --jq '.assets[].name')"
           printf '%s\n' "$assets"
           printf '%s\n' "$assets" > release-assets.txt
+          grep -Fx "token-dock-${VERSION}.exe" release-assets.txt
+          grep -Fx "token-dock-${VERSION}.dmg" release-assets.txt
           grep -qx "token-dock.exe" release-assets.txt
           grep -qx "token-dock.dmg" release-assets.txt
-          gh release edit "$TAG" --draft=false
+          grep -Fx "open-usage.exe" release-assets.txt
+          grep -Fx "open-usage.dmg" release-assets.txt
+          gh release edit "$TAG" --draft=false \
+            --notes "TokenDock ${VERSION}. Downloads: token-dock-${VERSION}.exe and token-dock-${VERSION}.dmg.
+
+          macOS: This free build is ad-hoc signed and is not notarized by Apple. If macOS blocks the DMG, attempt to open it, then go to System Settings > Privacy & Security > Open Anyway and confirm. After mounting, drag TokenDock.app into Applications. If the app is also blocked, repeat Open Anyway for the installed app. Only approve downloads you trust from this repository.
+
+          The unversioned downloads are compatibility copies for older automatic updaters."

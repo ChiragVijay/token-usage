@@ -101,16 +101,9 @@ point="$mountpoint"
 detach_mount "$point"
 rmdir "$point" 2>/dev/null || true
 
-# The image signature is stored in extended attributes. Release upload keeps
-# the file bytes, so this does not make a downloaded image notarized.
-/usr/bin/codesign --force --sign - "$output"
-/usr/bin/codesign --verify "$output"
-hdiutil_retry verify "$output"
-mountpoint="$(mktemp -d)"
-hdiutil_retry attach "$output" -nobrowse -readonly -mountpoint "$mountpoint"
-test -x "$mountpoint/TokenDock.app/Contents/MacOS/token-dock"
-point="$mountpoint"
-detach_mount "$point"
-rmdir "$point" 2>/dev/null || true
+# Leave the container unsigned. Apple specifies a Developer ID Application
+# identity for disk-image signing; an ad-hoc image signature is not trusted.
+# The app inside retains its sealed ad-hoc signature and still requires
+# first-launch approval. Integrity and mounting were verified above.
 
 echo "Verified and mounted $output"
