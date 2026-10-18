@@ -23,21 +23,11 @@ pub fn create() -> anyhow::Result<Tray> {
         &PredefinedMenuItem::separator(),
         &quit,
     ])?;
-    let mut pixels = vec![0u8; 32 * 32 * 4];
-    for y in 5..27 {
-        for x in 5..27 {
-            let active = ((5..10).contains(&x) && (10..25).contains(&y))
-                || ((13..18).contains(&x) && (5..22).contains(&y))
-                || ((21..26).contains(&x) && (13..27).contains(&y));
-            if active {
-                let i = (y * 32 + x) * 4;
-                pixels[i] = 77;
-                pixels[i + 1] = 130;
-                pixels[i + 2] = 222;
-                pixels[i + 3] = 255;
-            }
-        }
-    }
+    let pixels = if cfg!(target_os = "macos") {
+        include_bytes!("../../assets/TrayIconTemplate.rgba").to_vec()
+    } else {
+        include_bytes!("../../assets/TrayIcon.rgba").to_vec()
+    };
     let icon = TrayIconBuilder::new()
         .with_icon(Icon::from_rgba(pixels, 32, 32)?)
         .with_tooltip("Token Usage")

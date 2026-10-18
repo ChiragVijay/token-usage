@@ -260,6 +260,8 @@ pub struct Assets;
 impl gpui::AssetSource for Assets {
     fn load(&self, path: &str) -> anyhow::Result<Option<std::borrow::Cow<'static, [u8]>>> {
         let provider_logo: Option<&'static [u8]> = match path {
+            "brand" => Some(include_bytes!("../../assets/BrandGauge.svg")),
+            "brand-needle" => Some(include_bytes!("../../assets/BrandNeedle.svg")),
             "codex" => Some(include_bytes!("../../assets/providers/codex.svg")),
             "claude" => Some(include_bytes!("../../assets/providers/claude.svg")),
             "cursor" => Some(include_bytes!("../../assets/providers/cursor.svg")),
@@ -299,7 +301,6 @@ impl gpui::AssetSource for Assets {
             "search" => "<circle cx='11' cy='11' r='6.5'/><path d='m16.2 16.2 4 4'/>",
             "close" => "<path d='M6 6l12 12M18 6 6 18'/>",
             "reset" => "<path d='M4 12a8 8 0 1 0 2.3-5.6M4 4v5h5'/>",
-            "brand" => "<path d='M4 16V8a4 4 0 0 1 8 0v8a4 4 0 0 0 8 0V8M4 12h16'/>",
             _ => return Ok(None),
         };
         Ok(Some(std::borrow::Cow::Owned(format!("<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='white' stroke-width='1.7' stroke-linecap='round' stroke-linejoin='round'>{shape}</svg>").into_bytes())))

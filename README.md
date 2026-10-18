@@ -1,3 +1,5 @@
+<img src="assets/AppIcon.svg" width="64" height="64" alt="Token Usage icon">
+
 # Token Usage
 
 Track AI usage, costs, and limits in one desktop app.
@@ -6,7 +8,7 @@ Supports **ChatGPT / Codex, Claude Code, Cursor, Kiro, Antigravity, and OpenCode
 
 [Download the latest release](https://github.com/ChiragVijay/token-usage/releases/latest)
 
-![Token Usage dashboard in light mode, showing sample data](docs/images/dashboard-light.png)
+![Token Usage accounts in light mode, showing sample data](docs/images/accounts-light.png)
 
 ## Install
 
@@ -28,7 +30,7 @@ Sign in through your provider’s app or CLI, then open Token Usage. It detects 
 
 Provider data varies. Kiro reports credits separately from tokens and dollars. OpenCode live account checks still need validation.
 
-![Token Usage dashboard in dark mode, showing sample data](docs/images/dashboard-dark.png)
+![Token Usage accounts in dark mode, showing sample data](docs/images/accounts-dark.png)
 
 *Screenshots show sample data.*
 

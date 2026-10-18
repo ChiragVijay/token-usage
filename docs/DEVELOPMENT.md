@@ -21,6 +21,10 @@ cargo run --bin package
 
 Packaging creates a release build in `dist/` for the current platform. The macOS app is ad-hoc signed; the DMG container is unsigned. No Apple Developer credentials are needed. See the [README installation notes](../README.md#install) for first-launch approval.
 
+## App icons
+
+The green gauge artwork lives in `assets/AppIcon.svg`; `assets/TrayIcon.svg` is the monochrome macOS tray mark. Run `node scripts/generate-icons.cjs` with the `sharp` package available to regenerate the PNG, multi-size Windows ICO, macOS ICNS, and tray RGBA assets. Commit the generated assets with artwork changes. Builds do not require Node.js.
+
 ## Publishing a release
 
 After the **Release** workflow is merged into the default branch:

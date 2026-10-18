@@ -71,14 +71,28 @@ impl Dashboard {
                             .size(px(mark))
                             .flex_shrink_0()
                             .rounded(px(RADIUS))
-                            .bg(rgb(theme.ink))
+                            .bg(rgb(0x252a25))
                             .flex()
                             .items_center()
                             .justify_center()
                             .child(
-                                icon("brand", theme)
-                                    .size(px(ICON_BODY))
-                                    .text_color(rgb(theme.bg)),
+                                div()
+                                    .relative()
+                                    .size(px(mark * 0.76))
+                                    .child(
+                                        gpui::svg()
+                                            .path("brand")
+                                            .absolute()
+                                            .size_full()
+                                            .text_color(rgb(0xf4f2e8)),
+                                    )
+                                    .child(
+                                        gpui::svg()
+                                            .path("brand-needle")
+                                            .absolute()
+                                            .size_full()
+                                            .text_color(rgb(0xa2c784)),
+                                    ),
                             ),
                     )
                     .when(!rail, |row| {
