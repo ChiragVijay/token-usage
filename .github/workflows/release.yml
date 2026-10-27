@@ -147,14 +147,13 @@ jobs:
           Copy-Item "dist\Token Usage-windows\Token Usage.exe" "token-usage-$env:VERSION.exe"
           # Already-installed clients select this exact name.
           Copy-Item "token-usage-$env:VERSION.exe" "token-usage.exe"
-          Copy-Item "token-usage-$env:VERSION.exe" "open-usage.exe"
       - name: Upload release asset
         shell: pwsh
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: v${{ needs.bump.outputs.version }}
           VERSION: ${{ needs.bump.outputs.version }}
-        run: gh release upload "$env:TAG" "token-usage-$env:VERSION.exe" token-usage.exe open-usage.exe --clobber
+        run: gh release upload "$env:TAG" "token-usage-$env:VERSION.exe" token-usage.exe --clobber
 
   macos:
     name: macOS (Apple Silicon)
@@ -196,13 +195,12 @@ jobs:
           sh tests/macos-dmg.sh "dist/Token Usage.app" "token-usage-${VERSION}.dmg"
           # Already-installed clients select this exact name.
           cp "token-usage-${VERSION}.dmg" token-usage.dmg
-          cp "token-usage-${VERSION}.dmg" open-usage.dmg
       - name: Upload release asset
         env:
           GH_TOKEN: ${{ github.token }}
           TAG: v${{ needs.bump.outputs.version }}
           VERSION: ${{ needs.bump.outputs.version }}
-        run: gh release upload "$TAG" "token-usage-${VERSION}.dmg" token-usage.dmg open-usage.dmg --clobber
+        run: gh release upload "$TAG" "token-usage-${VERSION}.dmg" token-usage.dmg --clobber
 
   publish:
     name: Publish
@@ -223,11 +221,9 @@ jobs:
           grep -Fx "token-usage-${VERSION}.dmg" release-assets.txt
           grep -qx "token-usage.exe" release-assets.txt
           grep -qx "token-usage.dmg" release-assets.txt
-          grep -Fx "open-usage.exe" release-assets.txt
-          grep -Fx "open-usage.dmg" release-assets.txt
           gh release edit "$TAG" --draft=false \
             --notes "Token Usage ${VERSION}. Downloads: token-usage-${VERSION}.exe and token-usage-${VERSION}.dmg.
 
           macOS: This free build is ad-hoc signed and is not notarized by Apple. If macOS blocks the DMG, attempt to open it, then go to System Settings > Privacy & Security > Open Anyway and confirm. After mounting, drag Token Usage.app into Applications. If the app is also blocked, repeat Open Anyway for the installed app. Only approve downloads you trust from this repository.
 
-          The unversioned downloads are compatibility copies for older automatic updaters."
+          The unversioned downloads are the copies the in-app updater fetches."
