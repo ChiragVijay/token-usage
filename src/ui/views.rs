@@ -1744,33 +1744,41 @@ impl Dashboard {
 
     pub(super) fn connections(&self, cx: &Context<Self>) -> Div {
         let theme = self.theme();
+        let recalled = self.connections_view.is_none().then(|| {
+            token_usage::connections::Reading::new(self.config.clone()).recall(self.data())
+        });
+        let view = self
+            .connections_view
+            .as_ref()
+            .unwrap_or_else(|| recalled.as_ref().unwrap());
         div().w_full().max_w(px(760.)).mx_auto().child(
             panel(theme).p(px(0.)).overflow_hidden().children(
                 Provider::ALL
                     .into_iter()
                     .enumerate()
-                    .filter_map(|(index, provider)| {
-                        self.data()
-                            .providers
-                            .get(provider.index())
-                            .filter(|status| status.provider == provider)
-                            .map(|status| self.connection_account(status, index > 0, cx))
+                    .map(|(index, provider)| {
+                        self.connection_account(view, provider, index > 0, cx)
                     }),
             ),
         )
     }
     fn connection_account(
         &self,
-        status: &ProviderStatus,
+        view: &token_usage::connections::View,
+        provider: Provider,
         divider: bool,
         cx: &Context<Self>,
     ) -> Div {
         let theme = self.theme();
-        let provider = status.provider;
-        let included = self.config.enabled[provider.index()];
-        let listed = token_usage::config::listed_on_dashboard(&self.config, status);
-        let summary = self.connection_summary(status);
-        let sources = self.listed_sources(status);
+        let row = view.row(provider);
+        let on = row.on;
+        let hint = row.hint.clone();
+        let labels = row
+            .hint_label
+            .iter()
+            .cloned()
+            .chain(row.found.iter().cloned())
+            .collect::<Vec<_>>();
         div()
             .when(divider, |row| {
                 row.border_t_1().border_color(rgb(theme.line))
@@ -1795,15 +1803,21 @@ impl Dashboard {
                             .flex_col()
                             .justify_center()
                             .gap(px(SPACE_2XS))
-                            .child(title(provider.account_name(), theme))
-                            .when_some(summary.filter(|_| included), |column, summary| {
+                            .child(title(row.title.to_owned(), theme))
+                            .when_some(row.caption.clone(), |column, summary| {
                                 column.child(caption(summary, theme).truncate())
                             }),
                     )
-                    .when(included, |column| {
+                    .when(on, |column| {
+                        let action = if hint.is_some() {
+                            "Clear"
+                        } else if provider == Provider::Cursor {
+                            "Import CSV"
+                        } else {
+                            "Add folder"
+                        };
                         column
-                            .children(sources.iter().map(|source| {
-                                let remove = source.remove.clone();
+                            .children(labels.iter().map(|text| {
                                 div()
                                     .h(px(CONTROL_HEIGHT))
                                     .pl(px(SPACE_S))
@@ -1811,7 +1825,6 @@ impl Dashboard {
                                     .bg(rgb(theme.bg))
                                     .flex()
                                     .items_center()
-                                    .gap(px(SPACE_XS))
                                     .child(
                                         div()
                                             .flex_1()
@@ -1820,46 +1833,17 @@ impl Dashboard {
                                             .font_family(mono_font())
                                             .text_size(px(TYPE_CAPTION))
                                             .text_color(rgb(theme.muted))
-                                            .child(source.text.clone()),
+                                            .child(text.clone()),
                                     )
-                                    .when_some(remove, |row, (id, action)| {
-                                        row.child(
-                                            self.icon_button(id, "close", "Remove", action, cx),
-                                        )
-                                    })
                             }))
-                            .child(
-                                div()
-                                    .flex()
-                                    .items_center()
-                                    .gap(px(SPACE_XS))
-                                    .child(self.button(
-                                        format!("add-home-{}", provider.key()),
-                                        "Add folder",
-                                        None,
-                                        false,
-                                        UiAction::AddHome(provider),
-                                        cx,
-                                    ))
-                                    .when(provider == Provider::Cursor, |row| {
-                                        row.child(self.button(
-                                            "cursor-csv",
-                                            "Import CSV",
-                                            None,
-                                            false,
-                                            UiAction::ImportCursor,
-                                            cx,
-                                        ))
-                                    })
-                                    .child(div().flex_1())
-                                    .child(self.text_action(
-                                        format!("open-account-{}", provider.key()),
-                                        "Dashboard",
-                                        Some("arrow"),
-                                        UiAction::OpenProvider(provider),
-                                        cx,
-                                    )),
-                            )
+                            .child(self.button(
+                                format!("hint-{}", provider.key()),
+                                action,
+                                None,
+                                false,
+                                UiAction::ConnectionHint(provider),
+                                cx,
+                            ))
                     }),
             )
             .child(
@@ -1869,8 +1853,8 @@ impl Dashboard {
                     .items_center()
                     .child(self.toggle(
                         &format!("include-{}", provider.key()),
-                        listed,
-                        move |view, on, _, cx| view.set_listed(provider, on, cx),
+                        on,
+                        move |view, on, _, cx| view.set_connection(provider, on, cx),
                         cx,
                     )),
             )
@@ -1930,104 +1914,6 @@ impl Dashboard {
                 }
             }))
             .child(div().size(px(14.)).rounded_full().bg(rgb(knob)))
-    }
-    fn connection_summary(&self, status: &ProviderStatus) -> Option<String> {
-        let mut parts = Vec::new();
-        if status.provider == Provider::Cursor && !self.config.cursor_imports.is_empty() {
-            parts.push("CSV".into());
-        } else if status.provider != Provider::Cursor && status.sources > 0 {
-            parts.push(if status.sources == 1 {
-                "1 file".into()
-            } else {
-                format!("{} files", status.sources)
-            });
-        }
-        if let Some(allowance) = self.allowance_label(status) {
-            parts.push(allowance);
-        }
-        if parts.is_empty() {
-            None
-        } else {
-            Some(parts.join(analytics::separator()))
-        }
-    }
-    fn allowance_label(&self, status: &ProviderStatus) -> Option<String> {
-        if !self.config.online {
-            return Some(if status.checked_at.is_some() {
-                "Cached".into()
-            } else {
-                "Paused".into()
-            });
-        }
-        if !status.stale && status.checked_at.is_some() {
-            return Some(
-                status
-                    .plan
-                    .as_deref()
-                    .map(plan_name)
-                    .unwrap_or_else(|| "Live".into()),
-            );
-        }
-        if reported_error(&status.detail) {
-            return Some(status.detail.clone());
-        }
-        if status.checked_at.is_some() {
-            return Some("Cached".into());
-        }
-        if status.detected {
-            return Some("No sign-in".into());
-        }
-        None
-    }
-    fn listed_sources(&self, status: &ProviderStatus) -> Vec<ListedSource> {
-        let provider = status.provider;
-        let mut listed = Vec::new();
-        let mut seen = std::collections::BTreeSet::new();
-        for (index, path) in self.config.custom_homes[provider.index()]
-            .iter()
-            .enumerate()
-        {
-            seen.insert(path_key(path));
-            listed.push(ListedSource {
-                text: self.location_text(path),
-                remove: Some((
-                    format!("remove-home-{}-{index}", provider.key()),
-                    UiAction::RemoveHome(provider, index),
-                )),
-            });
-        }
-        if provider == Provider::Cursor
-            && let Some(path) = self.config.cursor_imports.first()
-        {
-            seen.insert(path_key(path));
-            listed.push(ListedSource {
-                text: self.location_text(path),
-                remove: Some(("cursor-clear".into(), UiAction::ClearCursor)),
-            });
-        }
-        let cached_homes = self.derived.homes.value();
-        let defaults = cached_homes
-            .as_ref()
-            .and_then(|homes| homes.get(provider.index()))
-            .map(Vec::as_slice)
-            .unwrap_or_default();
-        for path in defaults {
-            if !seen.insert(path_key(path)) {
-                continue;
-            }
-            listed.push(ListedSource {
-                text: self.location_text(path),
-                remove: None,
-            });
-        }
-        listed
-    }
-    fn location_text(&self, path: &std::path::Path) -> String {
-        if self.config.privacy {
-            "Hidden".into()
-        } else {
-            display_path(path)
-        }
     }
 
     // ----- Settings -------------------------------------------------------
@@ -2550,46 +2436,6 @@ fn activity_column_widths(width: f32) -> Vec<(Column, f32)> {
     };
     resolve_columns(width, &specs)
 }
-struct ListedSource {
-    text: String,
-    remove: Option<(String, UiAction)>,
-}
-fn display_path(path: &std::path::Path) -> String {
-    let text = path.display().to_string();
-    if let Some(rest) = text.strip_prefix(r"\\?\UNC\") {
-        format!(r"\\{rest}")
-    } else if let Some(rest) = text.strip_prefix(r"\\?\") {
-        rest.to_string()
-    } else {
-        text
-    }
-}
-fn path_key(path: &std::path::Path) -> String {
-    path.canonicalize()
-        .unwrap_or_else(|_| path.to_path_buf())
-        .to_string_lossy()
-        .to_lowercase()
-}
-fn reported_error(detail: &str) -> bool {
-    let sep = analytics::separator();
-    let known = [
-        "Paused in Connections".to_string(),
-        format!("Account history{sep}across your machines"),
-        "Local history + live account limits".to_string(),
-        "Live account limits".to_string(),
-        "Cached Cursor account history".to_string(),
-        format!("Detected on this device{sep}no local usage yet"),
-        "Import a usage CSV or enable account checks".to_string(),
-        "Connect a source to see usage".to_string(),
-    ];
-    if detail.is_empty()
-        || known.iter().any(|item| item == detail)
-        || detail.ends_with(&format!("history files{sep}local"))
-    {
-        return false;
-    }
-    !(detail.starts_with("Use ") && detail.contains("to create local history"))
-}
 fn plan_name(plan: &str) -> String {
     plan.split(['_', '-'])
         .map(|part| {
@@ -2677,24 +2523,8 @@ fn reset_text(at: Option<chrono::DateTime<Utc>>) -> String {
 
 #[cfg(test)]
 mod tests {
-    use super::{
-        activity_column_widths, column_align_end, model_column_widths, reported_error, table_track,
-    };
+    use super::{activity_column_widths, column_align_end, model_column_widths, table_track};
     use crate::ui::table::Column;
-
-    #[test]
-    fn status_lines_with_separators_are_not_errors() {
-        let sep = token_usage::analytics::separator();
-        assert!(!reported_error(&format!(
-            "Account history{sep}across your machines"
-        )));
-        assert!(!reported_error(&format!(
-            "Detected on this device{sep}no local usage yet"
-        )));
-        assert!(!reported_error(&format!("3 history files{sep}local")));
-        assert!(reported_error("Sign in expired"));
-        assert!(!reported_error(""));
-    }
 
     #[test]
     fn header_and_rows_share_one_column_width() {

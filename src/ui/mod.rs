@@ -29,6 +29,7 @@ use theme::*;
 use token_usage::{
     analytics::{self, Period},
     config::Config,
+    connections::Connections,
     model::{Provider, Snapshot},
     providers,
     store::Store,
@@ -94,12 +95,9 @@ enum UiAction {
     Compact,
     Quit,
     Metric(bool),
-    AddHome(Provider),
-    RemoveHome(Provider, usize),
-    ImportCursor,
-    ClearCursor,
+    /// The one control on an on row. Sets a folder, sets a Cursor CSV, or clears that hint.
+    ConnectionHint(Provider),
     Interval(u64),
-    OpenProvider(Provider),
     ActivityPage(usize),
     ActivityRows(Option<usize>),
     Detail(String),
@@ -173,6 +171,14 @@ pub struct Dashboard {
     update_auto: bool,
     update_checking: bool,
     update_busy: bool,
+    /// Last paint of the connections page. `open` fills discovered homes off the UI thread.
+    connections_view: Option<token_usage::connections::View>,
+    connections_key: Option<(u64, u64)>,
+    connections_wanted: Option<(u64, u64)>,
+    connections_open_gen: u64,
+    /// Newest full set waiting to be saved. A click replaces it; one write follows.
+    connection_pending: Option<token_usage::connections::Choices>,
+    connection_busy: bool,
     _appearance: Subscription,
 }
 
@@ -293,6 +299,12 @@ impl Dashboard {
             update_auto: false,
             update_checking: false,
             update_busy: false,
+            connections_view: None,
+            connections_key: None,
+            connections_wanted: None,
+            connections_open_gen: 0,
+            connection_pending: None,
+            connection_busy: false,
             _appearance: cx.observe_window_appearance(window, |view, window, cx| {
                 let dark = view.config.dark;
                 window.defer(cx, move |window, _| {
@@ -393,6 +405,136 @@ impl Dashboard {
             let _ = sender_done.send(RefreshMsg::Done(result));
         });
         cx.notify();
+    }
+    /// `open` may stat default homes, so it runs off the UI thread.
+    fn schedule_connections_open(&mut self, cx: &mut Context<Self>) {
+        if self.connection_busy || self.connection_pending.is_some() {
+            return;
+        }
+        let key = (self.config_revision, self.version);
+        if self.connections_wanted == Some(key) || self.connections_key == Some(key) {
+            return;
+        }
+        self.connections_open_gen = self.connections_open_gen.wrapping_add(1);
+        let generation = self.connections_open_gen;
+        self.connections_wanted = Some(key);
+        let config = self.config.clone();
+        let snapshot = self.live.clone();
+        cx.spawn(async move |view, cx| {
+            let painted = cx
+                .background_executor()
+                .spawn(
+                    async move { token_usage::connections::Reading::new(config).open(&snapshot) },
+                )
+                .await;
+            let _ = view.update(cx, |view, cx| {
+                if view.connections_open_gen != generation || view.connections_wanted != Some(key) {
+                    return;
+                }
+                if view.connection_busy || view.connection_pending.is_some() {
+                    view.connections_wanted = None;
+                    return;
+                }
+                view.connections_view = Some(painted);
+                view.connections_key = Some(key);
+                view.connections_wanted = None;
+                cx.notify();
+            });
+        })
+        .detach();
+    }
+    fn connection_choices(&self) -> token_usage::connections::Choices {
+        if let Some(choices) = &self.connection_pending {
+            return choices.clone();
+        }
+        if let Some(view) = &self.connections_view {
+            return token_usage::connections::Choices::from(view);
+        }
+        token_usage::connections::Reading::new(self.config.clone()).draft()
+    }
+    fn set_connection(&mut self, provider: Provider, on: bool, cx: &mut Context<Self>) {
+        self.revise_connections(provider, |choice| choice.on = on, cx);
+    }
+    fn revise_connections(
+        &mut self,
+        provider: Provider,
+        change: impl FnOnce(&mut token_usage::connections::Choice),
+        cx: &mut Context<Self>,
+    ) {
+        self.connections_open_gen = self.connections_open_gen.wrapping_add(1);
+        let mut choices = self.connection_choices();
+        change(choices.get_mut(provider));
+        if self.connections_view.is_none() {
+            self.connections_view = Some(
+                token_usage::connections::Reading::new(self.config.clone()).recall(&self.live),
+            );
+        }
+        if let Some(view) = &mut self.connections_view {
+            view.row_mut(provider)
+                .preview(choices.get(provider), self.config.privacy);
+        }
+        self.connection_pending = Some(choices);
+        self.pump_connections(cx);
+    }
+    fn pump_connections(&mut self, cx: &mut Context<Self>) {
+        if self.connection_busy {
+            return;
+        }
+        let Some(choices) = self.connection_pending.take() else {
+            return;
+        };
+        self.connection_busy = true;
+        let config = self.config.clone();
+        let snapshot = self.live.clone();
+        cx.spawn(async move |view, cx| {
+            let result = cx
+                .background_executor()
+                .spawn(async move {
+                    let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                        let mut reading = token_usage::connections::Reading::new(config);
+                        reading
+                            .choose(&snapshot, choices)
+                            .map(|painted| (reading.into_config(), painted))
+                    }));
+                    match outcome {
+                        Ok(result) => result,
+                        Err(_) => Err(token_usage::connections::Reject {
+                            message: "The connection change could not be saved".into(),
+                        }),
+                    }
+                })
+                .await;
+            let _ = view.update(cx, |view, cx| {
+                view.connection_busy = false;
+                match result {
+                    Ok((config, painted)) => {
+                        view.config = config;
+                        if view.connection_pending.is_none() {
+                            view.connections_view = Some(painted);
+                        }
+                        view.save(cx);
+                        let key = (view.config_revision, view.version);
+                        view.connections_key = Some(key);
+                        view.connections_wanted = Some(key);
+                        view.refresh(cx);
+                    }
+                    Err(reject) => {
+                        if view.connection_pending.is_none() {
+                            view.message(reject.message, cx);
+                            view.connections_view = Some(
+                                token_usage::connections::Reading::new(view.config.clone())
+                                    .recall(&view.live),
+                            );
+                            view.connections_key = None;
+                            view.connections_wanted = None;
+                        }
+                    }
+                }
+                view.pump_connections(cx);
+                cx.notify();
+            });
+        })
+        .detach();
     }
     fn check_update(&mut self, manual: bool, cx: &mut Context<Self>) {
         if self.update_checking || self.update_busy {
@@ -858,76 +1000,40 @@ impl Dashboard {
                 self.token_chart = tokens;
                 self.hovered = None;
             }
-            UiAction::AddHome(provider) => {
-                if let Some(path) = rfd::FileDialog::new()
+            UiAction::ConnectionHint(provider) => {
+                let hint = self.connection_choices().get(provider).hint.clone();
+                if hint.is_some() {
+                    self.revise_connections(provider, |choice| choice.hint = None, cx);
+                } else if provider == Provider::Cursor {
+                    if let Some(path) = rfd::FileDialog::new()
+                        .add_filter("Cursor usage export", &["csv"])
+                        .pick_file()
+                    {
+                        self.message("Reading Cursor export...", cx);
+                        self.revise_connections(
+                            provider,
+                            move |choice| {
+                                choice.hint = Some(token_usage::connections::Hint::Export(path));
+                            },
+                            cx,
+                        );
+                    }
+                } else if let Some(path) = rfd::FileDialog::new()
                     .set_title(format!("Choose {} data folder", provider.name()))
                     .pick_folder()
                 {
-                    let paths = &mut self.config.custom_homes[provider.index()];
-                    if !paths.contains(&path) {
-                        paths.push(path);
-                    }
-                    self.save(cx);
-                    self.refresh(cx);
+                    self.revise_connections(
+                        provider,
+                        move |choice| {
+                            choice.hint = Some(token_usage::connections::Hint::Folder(path));
+                        },
+                        cx,
+                    );
                 }
-            }
-            UiAction::RemoveHome(provider, index) => {
-                let paths = &mut self.config.custom_homes[provider.index()];
-                if index < paths.len() {
-                    paths.remove(index);
-                    self.save(cx);
-                    self.refresh(cx);
-                }
-            }
-            UiAction::ImportCursor => {
-                if let Some(path) = rfd::FileDialog::new()
-                    .add_filter("Cursor usage export", &["csv"])
-                    .pick_file()
-                {
-                    self.message("Reading Cursor export...", cx);
-                    cx.spawn(async move |view, cx| {
-                        let read = path.clone();
-                        let result = cx
-                            .background_executor()
-                            .spawn(async move { providers::history::read_cursor_csv(&read) })
-                            .await;
-                        let _ = view.update(cx, |view, cx| match result {
-                            Ok(records) => {
-                                view.config.cursor_imports = vec![path];
-                                view.save(cx);
-                                view.refresh(cx);
-                                view.message(
-                                    format!("Imported {} Cursor events", records.len()),
-                                    cx,
-                                );
-                            }
-                            Err(error) => view.message(error.to_string(), cx),
-                        });
-                    })
-                    .detach();
-                }
-            }
-            UiAction::ClearCursor => {
-                self.config.cursor_imports.clear();
-                self.save(cx);
-                self.refresh(cx);
             }
             UiAction::Interval(seconds) => {
                 self.config.refresh_seconds = seconds;
                 self.save(cx);
-            }
-            UiAction::OpenProvider(provider) => {
-                let url = match provider {
-                    Provider::Codex => "https://chatgpt.com/codex/settings/usage",
-                    Provider::Claude => "https://claude.ai/settings/usage",
-                    Provider::Cursor => "https://cursor.com/dashboard?tab=usage",
-                    Provider::Kiro => "https://app.kiro.dev/",
-                    Provider::Antigravity => "https://antigravity.google/",
-                    Provider::OpenCode => "https://opencode.ai/zen",
-                };
-                if open::that(url).is_err() {
-                    self.message("The provider dashboard could not be opened", cx);
-                }
             }
             UiAction::ActivityPage(page) => self.activity_page = page,
             UiAction::ActivityRows(limit) => {
