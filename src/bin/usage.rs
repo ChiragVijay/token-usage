@@ -17,7 +17,7 @@ fn run() -> Result<()> {
     let args: Vec<String> = std::env::args().skip(1).collect();
     if args.iter().any(|arg| arg == "--help" || arg == "-h") {
         println!(
-            "usage [--refresh] [--online|--offline] [--json] [--period 2h|24h|7d|30d|90d|today] [--days 1|7|30|90]\n\nUsage and allowances for ChatGPT, Claude Code, Cursor, Kiro, Antigravity, and OpenCode. Costs use reported amounts or public API-rate estimates. --online checks existing logins and downloads prices; --offline reads local history and cached allowances/prices without network requests. New installs default to offline; existing settings are respected.\nNo prompts, conversations, or credentials are printed."
+            "usage [--refresh] [--online|--offline] [--json] [--period 2h|24h|7d|30d|90d|today] [--days 1|7|30|90]\n\nUsage and allowances for ChatGPT, Claude Code, Cursor, Kiro, Antigravity, and OpenCode. Costs use reported amounts or public API-rate estimates. --online checks existing logins and downloads prices; --offline reads local history and cached allowances/prices without network requests. New installs default to online; existing settings are respected.\nNo prompts, conversations, or credentials are printed."
         );
         return Ok(());
     }
