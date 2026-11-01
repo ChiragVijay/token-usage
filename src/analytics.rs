@@ -120,22 +120,6 @@ impl Totals {
         let rows = self.reported_rows + self.estimated_rows;
         (rows > 0).then_some(self.reported + self.estimated)
     }
-    pub fn cost_note(&self) -> &'static str {
-        match (self.reported_rows, self.estimated_rows) {
-            (0, 0) => "No public rate",
-            (_, 0) => "From the account",
-            (0, _) => "Public API rates",
-            _ => "Account and API rates",
-        }
-    }
-    pub fn cache_percent(&self) -> f64 {
-        let total = self.tokens.total();
-        if total == 0 {
-            0.0
-        } else {
-            self.tokens.cache_read as f64 / total as f64 * 100.0
-        }
-    }
 }
 #[derive(Debug, Clone)]
 pub struct ModelRow {
