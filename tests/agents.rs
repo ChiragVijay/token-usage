@@ -4,11 +4,43 @@ use serde_json::{Value, json};
 use std::fs;
 use tempfile::TempDir;
 use token_usage::{
-    config::Config,
-    model::{Provider, Snapshot},
+    config::{self, Config},
+    model::{Provider, ProviderStatus, Snapshot},
     providers::{antigravity, kiro, opencode},
     store::Store,
 };
+
+#[test]
+fn dashboard_lists_discovered_agents_until_settings_shows_the_rest() {
+    let config = Config::default();
+    assert!(config.online);
+    assert_eq!(config.show_hidden, [false; Provider::COUNT]);
+    let mut claude = ProviderStatus::empty(Provider::Claude);
+    assert!(!config::listed_on_dashboard(&config, &claude));
+    claude.connected = true;
+    assert!(!config::listed_on_dashboard(&config, &claude));
+    claude.detected = true;
+    assert!(config::listed_on_dashboard(&config, &claude));
+    let mut chosen = Config::default();
+    chosen.show_hidden[Provider::Kiro.index()] = true;
+    let kiro = ProviderStatus::empty(Provider::Kiro);
+    assert!(config::listed_on_dashboard(&chosen, &kiro));
+    chosen.enabled[Provider::Kiro.index()] = false;
+    assert!(!config::listed_on_dashboard(&chosen, &kiro));
+    let mut folder = Config::default();
+    folder.custom_homes[Provider::OpenCode.index()].push("opencode-home".into());
+    assert!(config::listed_on_dashboard(
+        &folder,
+        &ProviderStatus::empty(Provider::OpenCode)
+    ));
+    let legacy: Config = serde_json::from_str("{}").unwrap();
+    assert!(legacy.online);
+    assert_eq!(legacy.show_hidden, [false; Provider::COUNT]);
+    assert!(!config::listed_on_dashboard(
+        &legacy,
+        &ProviderStatus::empty(Provider::Cursor)
+    ));
+}
 
 #[test]
 fn old_settings_and_cache_preserve_original_accounts() {

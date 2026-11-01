@@ -162,6 +162,19 @@ pub fn mono_font() -> &'static str {
         "Menlo"
     }
 }
+#[derive(Clone, Copy)]
+pub struct TitleBarColors {
+    pub background: u32,
+    pub text: u32,
+}
+/// Native title bar colors for the app theme. Light mode stays light.
+pub fn title_bar_colors(dark: bool) -> TitleBarColors {
+    let theme = Theme::new(dark);
+    TitleBarColors {
+        background: theme.bg,
+        text: theme.ink,
+    }
+}
 pub fn sync_components(dark: bool, window: &mut gpui::Window, cx: &mut gpui::App) {
     gpui_component::Theme::change(
         if dark {
@@ -183,6 +196,7 @@ pub fn sync_components(dark: bool, window: &mut gpui::Window, cx: &mut gpui::App
     let app = Theme::new(dark);
     theme.colors.input = rgb(app.line).into();
     theme.colors.ring = rgb(app.focus).into();
+    super::window::apply_theme(window, dark);
 }
 /// Tabular figures keep columns of numbers aligned without a monospace font.
 pub fn tabular<E: Styled>(mut element: E) -> E {
@@ -344,6 +358,27 @@ mod tests {
         }
         assert_eq!(CONTROL_HEIGHT, SPACE_XL);
         assert_eq!(CHART_GAP, SPACE_XS);
+    }
+
+    fn luma(rgb: u32) -> u32 {
+        let red = (rgb >> 16) & 0xff;
+        let green = (rgb >> 8) & 0xff;
+        let blue = rgb & 0xff;
+        red * 3 + green * 6 + blue
+    }
+
+    #[test]
+    fn title_bar_follows_the_app_theme() {
+        let dark = title_bar_colors(true);
+        let light = title_bar_colors(false);
+        assert!(luma(dark.background) < luma(dark.text));
+        assert!(luma(light.text) < luma(light.background));
+        // Weighted luma tops out at 2550. Dark stays dark and light stays light.
+        assert!(luma(dark.background) < 500);
+        assert!(luma(dark.text) > 2000);
+        assert!(luma(light.background) > 2000);
+        assert!(luma(light.text) < 500);
+        assert_ne!(dark.background, light.background);
     }
 
     #[test]

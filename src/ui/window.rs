@@ -238,6 +238,115 @@ fn visibility_command(
     }
 }
 
+/// Paint the native title bar for the app theme. Light mode stays light.
+pub fn apply_theme(window: &gpui::Window, dark: bool) {
+    let colors = super::theme::title_bar_colors(dark);
+    #[cfg(target_os = "macos")]
+    apply_macos_title_bar(window, dark, colors);
+    #[cfg(target_os = "windows")]
+    apply_windows_title_bar(window, colors, dark);
+    #[cfg(not(any(target_os = "macos", target_os = "windows")))]
+    let _ = (window, dark, colors);
+}
+
+#[cfg(target_os = "macos")]
+fn apply_macos_title_bar(window: &gpui::Window, dark: bool, colors: super::theme::TitleBarColors) {
+    use objc2::MainThreadMarker;
+    use objc2_app_kit::{
+        NSAppearance, NSAppearanceCustomization, NSAppearanceNameAqua, NSAppearanceNameDarkAqua,
+        NSColor, NSView,
+    };
+    use raw_window_handle::{HasWindowHandle, RawWindowHandle};
+
+    let Ok(handle) = HasWindowHandle::window_handle(window) else {
+        return;
+    };
+    let RawWindowHandle::AppKit(handle) = handle.as_raw() else {
+        return;
+    };
+    // The handle is the content NSView. It stays valid for this call.
+    let _main = MainThreadMarker::new().expect("GPUI runs on the main thread");
+    let view = unsafe { handle.ns_view.cast::<NSView>().as_ref() };
+    let Some(ns_window) = view.window() else {
+        return;
+    };
+    let name = if dark {
+        unsafe { NSAppearanceNameDarkAqua }
+    } else {
+        unsafe { NSAppearanceNameAqua }
+    };
+    if let Some(appearance) = NSAppearance::appearanceNamed(name) {
+        ns_window.setAppearance(Some(&appearance));
+    }
+    let color = NSColor::colorWithSRGBRed_green_blue_alpha(
+        unit(colors.background, 16),
+        unit(colors.background, 8),
+        unit(colors.background, 0),
+        1.0,
+    );
+    ns_window.setBackgroundColor(Some(&color));
+}
+
+#[cfg(target_os = "windows")]
+fn apply_windows_title_bar(
+    window: &gpui::Window,
+    colors: super::theme::TitleBarColors,
+    dark: bool,
+) {
+    use windows::{
+        Win32::Graphics::Dwm::{
+            DWMWA_BORDER_COLOR, DWMWA_CAPTION_COLOR, DWMWA_TEXT_COLOR,
+            DWMWA_USE_IMMERSIVE_DARK_MODE, DwmSetWindowAttribute,
+        },
+        core::BOOL,
+    };
+    let Some(hwnd) = native_handle(window) else {
+        return;
+    };
+    let dark_mode = BOOL::from(dark);
+    let caption = colorref(colors.background);
+    let text = colorref(colors.text);
+    unsafe {
+        let _ = DwmSetWindowAttribute(
+            hwnd,
+            DWMWA_USE_IMMERSIVE_DARK_MODE,
+            &dark_mode as *const BOOL as *const _,
+            std::mem::size_of::<BOOL>() as u32,
+        );
+        let _ = DwmSetWindowAttribute(
+            hwnd,
+            DWMWA_CAPTION_COLOR,
+            &caption as *const u32 as *const _,
+            std::mem::size_of::<u32>() as u32,
+        );
+        let _ = DwmSetWindowAttribute(
+            hwnd,
+            DWMWA_TEXT_COLOR,
+            &text as *const u32 as *const _,
+            std::mem::size_of::<u32>() as u32,
+        );
+        let _ = DwmSetWindowAttribute(
+            hwnd,
+            DWMWA_BORDER_COLOR,
+            &caption as *const u32 as *const _,
+            std::mem::size_of::<u32>() as u32,
+        );
+    }
+}
+
+#[cfg(target_os = "macos")]
+fn unit(rgb: u32, shift: u32) -> f64 {
+    ((rgb >> shift) & 0xff) as f64 / 255.0
+}
+
+#[cfg(target_os = "windows")]
+fn colorref(rgb: u32) -> u32 {
+    let red = (rgb >> 16) & 0xff;
+    let green = (rgb >> 8) & 0xff;
+    let blue = rgb & 0xff;
+    (blue << 16) | (green << 8) | red
+}
+
 #[cfg(test)]
 mod tests {
     use super::{WINDOW_TITLE, single_instance_action};
