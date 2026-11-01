@@ -9,6 +9,7 @@ pub const REFRESH_INTERVALS: [u64; 4] = [300, 600, 1800, 3600];
 #[derive(Debug, Clone, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Config {
+    #[serde(default = "default_online")]
     pub online: bool,
     #[serde(deserialize_with = "enabled")]
     pub enabled: [bool; Provider::COUNT],
@@ -24,7 +25,7 @@ pub struct Config {
 impl Default for Config {
     fn default() -> Self {
         Self {
-            online: false,
+            online: default_online(),
             enabled: [true; Provider::COUNT],
             dark: false,
             privacy: false,
@@ -34,6 +35,9 @@ impl Default for Config {
             cursor_imports: vec![],
         }
     }
+}
+fn default_online() -> bool {
+    true
 }
 fn enabled<'de, D: serde::Deserializer<'de>>(
     deserializer: D,

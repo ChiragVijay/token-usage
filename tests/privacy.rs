@@ -16,11 +16,16 @@ use token_usage::{
 };
 
 #[test]
-fn network_access_is_opt_in_for_new_and_partial_settings() {
-    assert!(!Config::default().online);
-    assert!(!serde_json::from_str::<Config>("{}").unwrap().online);
+fn network_access_defaults_on_for_new_and_partial_settings() {
+    assert!(Config::default().online);
+    assert!(serde_json::from_str::<Config>("{}").unwrap().online);
     assert!(
         serde_json::from_str::<Config>(r#"{"online":true}"#)
+            .unwrap()
+            .online
+    );
+    assert!(
+        !serde_json::from_str::<Config>(r#"{"online":false}"#)
             .unwrap()
             .online
     );
