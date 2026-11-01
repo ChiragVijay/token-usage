@@ -3,6 +3,14 @@ use tray_icon::{
     menu::{Menu, MenuId, MenuItem, PredefinedMenuItem},
 };
 
+/// Hover text only. The menu bar and tray title stay empty.
+pub const TOOLTIP: &str = "Token Usage";
+
+/// No title beside the icon. Limits and usage stay in the window.
+pub fn menu_bar_title() -> Option<&'static str> {
+    None
+}
+
 pub struct Tray {
     pub icon: TrayIcon,
     pub overview: MenuId,
@@ -30,11 +38,12 @@ pub fn create() -> anyhow::Result<Tray> {
     };
     let icon = TrayIconBuilder::new()
         .with_icon(Icon::from_rgba(pixels, 32, 32)?)
-        .with_tooltip("Token Usage")
+        .with_tooltip(TOOLTIP)
         .with_menu(Box::new(menu))
         .with_icon_as_template(cfg!(target_os = "macos"))
         .with_menu_on_left_click(cfg!(target_os = "macos"))
         .build()?;
+    icon.set_title(menu_bar_title());
     Ok(Tray {
         icon,
         overview: overview.id().clone(),
@@ -42,4 +51,14 @@ pub fn create() -> anyhow::Result<Tray> {
         refresh: refresh.id().clone(),
         quit: quit.id().clone(),
     })
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn tray_shows_the_icon_without_a_title() {
+        assert!(super::menu_bar_title().is_none());
+        assert_eq!(super::TOOLTIP, "Token Usage");
+        assert!(super::TOOLTIP.is_ascii());
+    }
 }

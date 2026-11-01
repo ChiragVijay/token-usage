@@ -1768,6 +1768,7 @@ impl Dashboard {
         let theme = self.theme();
         let provider = status.provider;
         let included = self.config.enabled[provider.index()];
+        let listed = token_usage::config::listed_on_dashboard(&self.config, status);
         let summary = self.connection_summary(status);
         let sources = self.listed_sources(status);
         div()
@@ -1868,15 +1869,23 @@ impl Dashboard {
                     .items_center()
                     .child(self.toggle(
                         &format!("include-{}", provider.key()),
-                        included,
-                        move |view, on, _, cx| {
-                            view.config.enabled[provider.index()] = on;
-                            view.save(cx);
-                            view.refresh(cx);
-                        },
+                        listed,
+                        move |view, on, _, cx| view.set_listed(provider, on, cx),
                         cx,
                     )),
             )
+    }
+    fn set_listed(&mut self, provider: Provider, on: bool, cx: &mut Context<Self>) {
+        let index = provider.index();
+        let detected = self
+            .data()
+            .providers
+            .get(index)
+            .is_some_and(|status| status.detected);
+        self.config.enabled[index] = on;
+        self.config.show_hidden[index] = on && !detected;
+        self.save(cx);
+        self.refresh(cx);
     }
     fn toggle(
         &self,
@@ -2111,6 +2120,34 @@ impl Dashboard {
                         ),
                     ),
             )
+            .child(Provider::ALL.into_iter().fold(
+                section("Agents"),
+                |panel, provider| {
+                    let found = self
+                        .data()
+                        .providers
+                        .get(provider.index())
+                        .is_some_and(|status| status.detected);
+                    let listed = self.data().providers.get(provider.index()).is_some_and(
+                        |status| token_usage::config::listed_on_dashboard(&self.config, status),
+                    );
+                    panel.child(self.preference_row(
+                        provider.account_name(),
+                        if found {
+                            "Found on this machine"
+                        } else {
+                            "Not found"
+                        },
+                        self.toggle(
+                            &format!("show-agent-{}", provider.key()),
+                            listed,
+                            move |view, on, _, cx| view.set_listed(provider, on, cx),
+                            cx,
+                        )
+                        .into_any_element(),
+                    ))
+                },
+            ))
             .child(
                 section("Data").child(
                     self.preference_row(

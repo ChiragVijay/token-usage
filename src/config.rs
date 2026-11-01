@@ -1,4 +1,4 @@
-use crate::model::Provider;
+use crate::model::{Provider, ProviderStatus};
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
 use std::{fs, path::PathBuf};
@@ -13,6 +13,9 @@ pub struct Config {
     pub online: bool,
     #[serde(deserialize_with = "enabled")]
     pub enabled: [bool; Provider::COUNT],
+    /// Show an agent on the dashboard even when discovery did not find it.
+    #[serde(default, deserialize_with = "show_hidden")]
+    pub show_hidden: [bool; Provider::COUNT],
     pub dark: bool,
     pub privacy: bool,
     pub refresh_seconds: u64,
@@ -27,6 +30,7 @@ impl Default for Config {
         Self {
             online: default_online(),
             enabled: [true; Provider::COUNT],
+            show_hidden: [false; Provider::COUNT],
             dark: false,
             privacy: false,
             refresh_seconds: DEFAULT_REFRESH_SECONDS,
@@ -38,6 +42,28 @@ impl Default for Config {
 }
 fn default_online() -> bool {
     true
+}
+fn show_hidden<'de, D: serde::Deserializer<'de>>(
+    deserializer: D,
+) -> Result<[bool; Provider::COUNT], D::Error> {
+    let values = Vec::<bool>::deserialize(deserializer)?;
+    let mut result = [false; Provider::COUNT];
+    for (slot, value) in result.iter_mut().zip(values) {
+        *slot = value;
+    }
+    Ok(result)
+}
+/// The dashboard lists an agent when discovery found it, or when Settings
+/// turned it on. A custom folder or a Cursor CSV counts as that choice.
+pub fn listed_on_dashboard(config: &Config, status: &ProviderStatus) -> bool {
+    let index = status.provider.index();
+    if !config.enabled[index] {
+        return false;
+    }
+    status.detected
+        || config.show_hidden[index]
+        || !config.custom_homes[index].is_empty()
+        || (status.provider == Provider::Cursor && !config.cursor_imports.is_empty())
 }
 fn enabled<'de, D: serde::Deserializer<'de>>(
     deserializer: D,

@@ -173,6 +173,7 @@ pub struct Dashboard {
     update_auto: bool,
     update_checking: bool,
     update_busy: bool,
+    _appearance: Subscription,
 }
 
 impl Dashboard {
@@ -292,6 +293,12 @@ impl Dashboard {
             update_auto: false,
             update_checking: false,
             update_busy: false,
+            _appearance: cx.observe_window_appearance(window, |view, window, cx| {
+                let dark = view.config.dark;
+                window.defer(cx, move |window, _| {
+                    window::apply_theme(window, dark);
+                });
+            }),
         };
         cx.spawn_in(window, async move |view, cx| {
             loop {
@@ -625,12 +632,7 @@ impl Dashboard {
         self.data()
             .providers
             .iter()
-            .filter(|status| {
-                self.config.enabled[status.provider.index()]
-                    && (status.detected
-                        || status.connected
-                        || self.has_records[status.provider.index()])
-            })
+            .filter(|status| token_usage::config::listed_on_dashboard(&self.config, status))
             .collect()
     }
     fn resize_window(&mut self, window: &mut Window, size: Size<Pixels>) {
@@ -685,65 +687,11 @@ impl Dashboard {
             None => (analytics::empty_value().into(), "No public rate".into()),
         }
     }
-    /// Uses the cached figures for today; runs again whenever they are recomputed.
+    /// The menu bar and system tray stay icon-only. No limit or usage text.
     fn update_tray(&mut self) {
         if let Some(tray) = &self.tray {
-            let Some(analysis) = self.derived.today.value() else {
-                return;
-            };
-            let mut tooltip = format!(
-                "Token Usage\n{} tokens today",
-                self.number(analysis.totals.tokens.total())
-            );
-            for status in self.visible_accounts() {
-                if let Some(limit) = status.limits.first() {
-                    let remaining = if self.config.privacy {
-                        "Hidden".into()
-                    } else if limit.expired(Utc::now()) {
-                        "Refresh needed".into()
-                    } else {
-                        format!(
-                            "{:.0}% left{}",
-                            limit.remaining(),
-                            if status.stale { " (cached)" } else { "" }
-                        )
-                    };
-                    tooltip.push_str(&format!("\n{}: {remaining}", status.provider.name()));
-                }
-            }
-            let _ = tray
-                .icon
-                .set_tooltip(Some(tooltip.chars().take(120).collect::<String>()));
-            #[cfg(target_os = "macos")]
-            {
-                let title = if self.config.privacy {
-                    "Token Usage".into()
-                } else {
-                    self.visible_accounts()
-                        .iter()
-                        .filter_map(|status| {
-                            status
-                                .limits
-                                .first()
-                                .filter(|limit| !limit.expired(Utc::now()))
-                                .map(|limit| {
-                                    format!(
-                                        "{} {:.0}%{}",
-                                        status.provider.name(),
-                                        limit.remaining(),
-                                        if status.stale { "~" } else { "" }
-                                    )
-                                })
-                        })
-                        .collect::<Vec<_>>()
-                        .join(analytics::separator())
-                };
-                tray.icon.set_title(Some(if title.is_empty() {
-                    "Token Usage".into()
-                } else {
-                    title
-                }));
-            }
+            tray.icon.set_title(tray::menu_bar_title());
+            let _ = tray.icon.set_tooltip(Some(tray::TOOLTIP));
         }
     }
     fn perform(&mut self, action: UiAction, window: &mut Window, cx: &mut Context<Self>) {
@@ -831,7 +779,7 @@ impl Dashboard {
                     let activity = (self.page == Page::Activity)
                         .then(|| self.derived.activity.value())
                         .flatten();
-                    let (data, config) = (self.live.clone(), self.config.clone());
+                    let (data, config) = (self.live.clone(), self.listed_config());
                     let (period, provider) = (self.period, self.provider);
                     self.message("Exporting...", cx);
                     cx.spawn(async move |view, cx| {

@@ -120,8 +120,21 @@ impl Dashboard {
             version: self.version,
             period,
             provider,
-            enabled: self.config.enabled,
+            enabled: self.listed_mask(),
         }
+    }
+    /// Agents discovery did not find stay out of dashboard totals until Settings shows them.
+    pub(super) fn listed_mask(&self) -> [bool; Provider::COUNT] {
+        std::array::from_fn(|index| {
+            self.live.providers.get(index).is_some_and(|status| {
+                token_usage::config::listed_on_dashboard(&self.config, status)
+            })
+        })
+    }
+    pub(super) fn listed_config(&self) -> Config {
+        let mut config = self.config.clone();
+        config.enabled = self.listed_mask();
+        config
     }
     /// Requests `work` for `key` unless that key is already shown or running.
     fn schedule<K, V>(
@@ -169,7 +182,7 @@ impl Dashboard {
         on_ready: Option<fn(&mut Self)>,
         cx: &mut Context<Self>,
     ) {
-        let (data, config, now) = (self.live.clone(), self.config.clone(), self.now);
+        let (data, config, now) = (self.live.clone(), self.listed_config(), self.now);
         let (period, provider) = (scope.period, scope.provider);
         self.schedule(
             slot,
@@ -200,7 +213,7 @@ impl Dashboard {
             Page::Insights => {
                 let scope = self.scope(self.period, self.provider);
                 self.schedule_analysis(|d| &mut d.scoped, scope.clone(), None, cx);
-                let (data, config, now) = (self.live.clone(), self.config.clone(), self.now);
+                let (data, config, now) = (self.live.clone(), self.listed_config(), self.now);
                 let (period, provider) = (scope.period, scope.provider);
                 self.schedule(
                     |d| &mut d.insights,
@@ -237,7 +250,7 @@ impl Dashboard {
                     cost: self.model_cost,
                     sort: self.model_sort,
                 };
-                let (data, config, now) = (self.live.clone(), self.config.clone(), self.now);
+                let (data, config, now) = (self.live.clone(), self.listed_config(), self.now);
                 let job = key.clone();
                 self.schedule(
                     |d| &mut d.models,
