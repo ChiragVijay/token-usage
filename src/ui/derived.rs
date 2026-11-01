@@ -7,7 +7,7 @@
 //! and swapped in when it lands. A newer request replaces (and cancels) an
 //! older one, so results for outdated keystrokes are discarded.
 use super::*;
-use std::{path::PathBuf, sync::Arc};
+use std::sync::Arc;
 use token_usage::analytics::{Analysis, Insights, ModelRow, ProjectRow};
 
 /// The inputs every history-derived value shares.
@@ -93,8 +93,6 @@ pub struct Derived {
     pub projects: Slot<ProjectsKey, Vec<ProjectRow>>,
     pub models: Slot<ModelsKey, ModelsResult>,
     pub activity: Slot<ActivityKey, ActivityResult>,
-    /// Default data folders that exist, per provider. Checked off the UI thread.
-    pub homes: Slot<(u64, u64), Vec<Vec<PathBuf>>>,
 }
 
 impl Dashboard {
@@ -286,27 +284,7 @@ impl Dashboard {
                 );
             }
             Page::Activity => self.ensure_activity(cx),
-            Page::Connections => {
-                let key = (self.config_revision, self.version);
-                let config = self.config.clone();
-                self.schedule(
-                    |d| &mut d.homes,
-                    key,
-                    move || {
-                        Provider::ALL
-                            .into_iter()
-                            .map(|provider| {
-                                token_usage::providers::homes(provider, &config)
-                                    .into_iter()
-                                    .filter(|path| path.exists())
-                                    .collect()
-                            })
-                            .collect()
-                    },
-                    None,
-                    cx,
-                );
-            }
+            Page::Connections => self.schedule_connections_open(cx),
             Page::Limits | Page::Settings => {}
         }
     }

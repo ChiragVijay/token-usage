@@ -1,5 +1,6 @@
 pub mod analytics;
 pub mod config;
+pub mod connections;
 mod input;
 #[cfg(any(windows, test))]
 pub mod install;
