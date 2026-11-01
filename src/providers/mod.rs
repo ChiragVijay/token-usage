@@ -97,6 +97,12 @@ pub fn homes(provider: Provider, config: &Config) -> Vec<PathBuf> {
     }
     if provider == Provider::Cursor {
         paths.push(home.join(".cursor"));
+        paths.push(
+            std::env::var_os("XDG_CONFIG_HOME")
+                .map(PathBuf::from)
+                .unwrap_or_else(|| home.join(".config"))
+                .join("cursor"),
+        );
         if cfg!(target_os = "macos") {
             paths.push(home.join("Library/Application Support/Cursor"));
         }

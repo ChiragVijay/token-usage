@@ -7,7 +7,7 @@
 
 use crate::{
     config::{data_dir, private_data_dir},
-    model::UsageRecord,
+    model::{Provider, UsageRecord},
 };
 use anyhow::{Context, Result};
 use serde::{Deserialize, Serialize};
@@ -85,17 +85,79 @@ pub fn state() -> RateState {
 pub fn estimate(record: &UsageRecord) -> Option<f64> {
     let key = normalize(&record.model);
     let bare = bare_name(&key);
-    if bare.is_empty() || unpriceable(bare) {
+    if bare.is_empty()
+        || unpriceable(bare)
+        || (record.provider == Provider::Cursor && matches!(bare, "auto" | "default" | "vega"))
+    {
         return None;
     }
     let table = table().read().ok()?;
-    let rate = lookup(&table, &key)?;
+    let cursor = (record.provider == Provider::Cursor)
+        .then(|| cursor_rate(&key))
+        .flatten();
+    // Cursor publishes no cache-write rate for its own models. Avoid inventing
+    // a price if a future response starts reporting cache-write tokens.
+    if cursor.is_some() && record.tokens.cache_write > 0 {
+        return None;
+    }
+    let rate = cursor.as_ref().or_else(|| lookup(&table, &key))?;
     Some(
         record.tokens.input as f64 * rate.input
             + record.tokens.cache_read as f64 * rate.cache_read
             + record.tokens.cache_write as f64 * rate.cache_write
             + record.tokens.output as f64 * rate.output,
     )
+}
+
+/// Cursor-specific API-equivalent rates, USD per million tokens, checked
+/// 2026-10-31: https://cursor.com/docs/models-and-pricing . Reported account
+/// amounts take precedence in analytics::record_cost. Never price Auto or
+/// internal routing codenames as a particular model.
+fn cursor_rate(model: &str) -> Option<ModelRate> {
+    let model = model.strip_prefix("cursor/").unwrap_or(model);
+    let (input, output, cache_read) = match model {
+        "composer-2.5" => (0.5, 2.5, 0.2),
+        "composer-2.5-fast" => (3., 15., 0.5),
+        _ => {
+            let model = model.strip_prefix("cursor-").unwrap_or(model);
+            let (version, suffix) = ["grok-4.5", "grok-4.6", "grok-4.7"]
+                .into_iter()
+                .find_map(|base| model.strip_prefix(base).map(|suffix| (base, suffix)))?;
+            let modifiers = suffix
+                .strip_prefix('-')
+                .unwrap_or(suffix)
+                .split('-')
+                .filter(|v| !v.is_empty())
+                .collect::<Vec<_>>();
+            if !suffix.is_empty() && !suffix.starts_with('-') {
+                return None;
+            }
+            if modifiers
+                .iter()
+                .any(|v| !matches!(*v, "low" | "medium" | "high" | "xhigh" | "fast" | "500k"))
+            {
+                return None;
+            }
+            let fast = modifiers.contains(&"fast");
+            let large = modifiers.contains(&"500k");
+            if large && version != "grok-4.7" {
+                return None;
+            }
+            match (large, fast) {
+                (true, true) => (6., 18., 1.5),
+                (true, false) | (false, true) => {
+                    (4., if version == "grok-4.5" { 18. } else { 12. }, 1.)
+                }
+                (false, false) => (2., 6., 0.5),
+            }
+        }
+    };
+    Some(ModelRate {
+        input: input / 1e6,
+        output: output / 1e6,
+        cache_read: cache_read / 1e6,
+        cache_write: 0.,
+    })
 }
 
 fn refresh_once(online: bool) -> Result<()> {
@@ -322,6 +384,64 @@ fn unpriceable(bare: &str) -> bool {
 mod tests {
     use super::*;
     use serde_json::json;
+
+    #[test]
+    fn cursor_models_use_their_own_rates_and_cache_discounts() {
+        for (name, expected) in [
+            ("composer-2.5", (0.5, 2.5, 0.2)),
+            ("composer-2.5-fast", (3., 15., 0.5)),
+            ("cursor-grok-4.5-medium-fast", (4., 18., 1.)),
+            ("grok-4.6-fast-high", (4., 12., 1.)),
+            ("grok-4.7-xhigh", (2., 6., 0.5)),
+            ("grok-4.7-500k-fast", (6., 18., 1.5)),
+        ] {
+            let rate = cursor_rate(name).unwrap();
+            assert!((rate.input * 1e6 - expected.0).abs() < 1e-9);
+            assert!((rate.output * 1e6 - expected.1).abs() < 1e-9);
+            assert!((rate.cache_read * 1e6 - expected.2).abs() < 1e-9);
+        }
+        for name in [
+            "auto",
+            "default",
+            "vega",
+            "grok-4.70",
+            "grok-4.7-unknown",
+            "grok-4.6-500k",
+            "composer-2",
+        ] {
+            assert!(cursor_rate(name).is_none(), "{name}");
+        }
+    }
+
+    #[test]
+    fn cursor_estimates_work_offline_and_do_not_price_another_provider() {
+        let mut record = UsageRecord {
+            id: "test".into(),
+            provider: Provider::Cursor,
+            timestamp: chrono::Utc::now(),
+            model: "composer-2.5".into(),
+            session: String::new(),
+            project: String::new(),
+            tokens: crate::model::Tokens {
+                input: 1_000_000,
+                output: 1_000_000,
+                cache_read: 1_000_000,
+                cache_write: 0,
+            },
+            reported_cost: None,
+            source: String::new(),
+        };
+        assert!((estimate(&record).unwrap() - 3.2).abs() < 1e-9);
+        for name in ["auto", "cursor/auto", "default", "vega"] {
+            record.model = name.into();
+            assert_eq!(estimate(&record), None);
+        }
+        record.model = "composer-2.5".into();
+        record.tokens.cache_write = 10;
+        assert_eq!(estimate(&record), None);
+        record.provider = Provider::Claude;
+        assert_eq!(estimate(&record), None);
+    }
 
     #[test]
     fn prices_uncached_cached_and_output_tokens() {
