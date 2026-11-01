@@ -30,6 +30,10 @@ Sign in through your provider’s app or CLI, then open Token Usage. It detects 
 
 Provider data varies. Kiro reports credits separately from tokens and dollars. OpenCode live account checks still need validation.
 
+Cursor supports the shared weekly allowance on new plans and the monthly Cursor Models / Other Models pools on legacy plans. Reset times and plan names come from Cursor's account APIs. Third-party models on new plans are paid usage, not a separate included allowance. Cursor-reported event costs take priority over estimates; built-in Composer 2.5 and Grok 4.5–4.7 rates cover missing reported costs, including Fast variants.
+
+Encrypted Cursor desktop credentials are supported on Windows under the same Windows user. On macOS and Linux, sign in with Cursor CLI or supply `CURSOR_AUTH_TOKEN` / `CURSOR_ACCESS_TOKEN` when desktop credentials are encrypted.
+
 ![Token Usage accounts in dark mode, showing sample data](docs/images/accounts-dark.png)
 
 *Screenshots show sample data.*
