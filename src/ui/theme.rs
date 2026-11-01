@@ -300,9 +300,6 @@ impl gpui::AssetSource for Assets {
             }
             "refresh" => "<path d='M20 8a8 8 0 1 0 0 8M20 3v5h-5'/>",
             "export" => "<path d='M12 3v12m-4-4 4 4 4-4M4 15v5h16v-5'/>",
-            "privacy" => {
-                "<path d='M3 12s3-6 9-6 9 6 9 6-3 6-9 6-9-6-9-6'/><circle cx='12' cy='12' r='3'/>"
-            }
             "theme" => "<path d='M20 15A9 9 0 0 1 9 4a9 9 0 1 0 11 11z'/>",
             "theme-light" => {
                 "<circle cx='12' cy='12' r='4'/><path d='M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4'/>"
